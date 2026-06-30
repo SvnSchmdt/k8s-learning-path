@@ -157,18 +157,29 @@ Ein Modul oder Lab gilt als fertig, wenn:
 - [ ] In README.md und der Roadmap verlinkt
 - [ ] Kein Hard-coded Secret oder Token
 
+## Dokumentations-Website
+
+- **MkDocs** mit Material for MkDocs: Website unter `https://svnschmdt.github.io/k8s-learning-path/`
+- Alle Lerninhalte liegen unter `docs/` (nicht mehr im Repo-Root)
+- `mkdocs.yml` definiert Struktur und Navigation
+- Deployment läuft automatisch via `.github/workflows/deploy-docs.yml` bei Push auf `main`
+- Neue Seiten müssen in `mkdocs.yml` unter `nav:` eingetragen werden
+- Nach Änderungen: `mkdocs build --strict` muss fehlerfrei durchlaufen
+- Root-`README.md` ist nur die kurze GitHub-Landingpage
+
 ## Git-Regeln
 
 - Commits auf Englisch
 - Feature-Branches für größere Änderungen: `add/module-XX-topic`
 - Bugfix-Branches: `fix/description`
 - Kein `--force` auf `main`
-- Kein Commit von `.DS_Store`, `*.swp`, `node_modules`, etc.
+- Kein Commit von `.DS_Store`, `*.swp`, `node_modules`, `.venv/`, `site/`
+- **Kein Claude/Anthropic/AI-Attribution** in Commit-Messages oder Dateiinhalten
 
 ## Public-Repo-Regeln
 
 - Keine personenbezogenen Daten
 - Keine internen URLs, IP-Adressen oder Firmennamen
 - Keine Credentials, Tokens, Passwörter – auch nicht in Commit-History
-- README.md ist der erste Anlaufpunkt für Außenstehende – immer aktuell halten
+- Root-`README.md` ist der erste Anlaufpunkt für Außenstehende – immer aktuell halten
 - LICENSE und CONTRIBUTING.md müssen vorhanden sein

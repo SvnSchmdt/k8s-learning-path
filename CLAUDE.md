@@ -99,10 +99,20 @@ Bevorzugt: kubectl delete -f manifests/ oder kubectl delete namespace <name>.
 ## Erweiterungsaufgabe
 ```
 
+## Dokumentations-Website (MkDocs)
+
+- Die Website basiert auf **MkDocs** mit **Material for MkDocs**
+- Alle Lerninhalte liegen unter `docs/` (Module, Labs, Exercises, Resources, Examples, Roadmap)
+- Neue Seiten müssen in `mkdocs.yml` unter `nav:` eingetragen werden
+- Nach Dokumentationsänderungen: `mkdocs build --strict` ausführen
+- Das Root-`README.md` ist nur die kurze GitHub-Landingpage – nicht die vollständige Dokumentation
+- Website-Deployment läuft automatisch per GitHub Actions bei jedem Push auf `main`
+- Lokale Vorschau: `pip install -r requirements.txt && mkdocs serve`
+
 ## Arbeitsregeln für Claude Code
 
-- Bei Änderungen an Modulen oder Labs: prüfen ob README.md und roadmap/01-learning-path.md noch aktuell sind
-- Neue Module/Labs immer in der Übersichtstabelle in README.md eintragen
+- Bei Änderungen an Modulen oder Labs: prüfen ob README.md und docs/roadmap/01-learning-path.md noch aktuell sind
+- Neue Module/Labs immer in `mkdocs.yml` nav und `docs/modules/index.md` bzw. `docs/labs/index.md` eintragen
 - Keine neuen Abhängigkeiten ohne Begründung einführen
 - Wenn etwas unklar ist: nachfragen statt raten
 - Bestehende Dateien erweitern/verbessern statt blind überschreiben
@@ -110,6 +120,8 @@ Bevorzugt: kubectl delete -f manifests/ oder kubectl delete namespace <name>.
 ## Git-Regeln
 
 - Keine Secrets, Tokens, Passwörter oder privaten Schlüssel committen
-- `.gitignore` beachten
+- `secret.example.yaml` nur mit Dummy-Werten und explizitem Hinweis
+- `.gitignore` beachten – `.venv/` und `site/` werden nicht committed
 - Commit-Messages auf Englisch, beschreibend
+- Kein Claude/Anthropic/AI-Attribution in Commit-Messages oder Dokumentation
 - Keine `node_modules`, `__pycache__`, `.DS_Store` oder ähnliche Artefakte

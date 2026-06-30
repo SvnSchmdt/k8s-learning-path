@@ -1,0 +1,103 @@
+site_name: Kubernetes Learning Path
+site_description: A practical Kubernetes learning path from your first Pod to GitOps and production readiness
+site_author: Sven Schmidt
+site_url: https://svnschmdt.github.io/k8s-learning-path/
+repo_name: SvnSchmdt/k8s-learning-path
+repo_url: https://github.com/SvnSchmdt/k8s-learning-path
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - navigation.indexes
+    - content.code.copy
+    - content.code.annotate
+    - content.action.edit
+    - search.suggest
+    - search.highlight
+  palette:
+    - scheme: default
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - scheme: slate
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+
+plugins:
+  - search
+
+nav:
+  - Home: index.md
+  - Roadmap:
+    - roadmap/index.md
+    - Overview: roadmap/00-overview.md
+    - Learning Path: roadmap/01-learning-path.md
+    - Checkpoints: roadmap/02-checkpoints.md
+  - Modules:
+    - modules/index.md
+    - "00 - Prerequisites": modules/00-prerequisites/README.md
+    - "01 - Container Basics": modules/01-container-basics/README.md
+    - "02 - Kubernetes Fundamentals": modules/02-kubernetes-fundamentals/README.md
+    - "03 - kubectl & Cluster Access": modules/03-kubectl-and-cluster-access/README.md
+    - "04 - Pods & Workloads": modules/04-pods-and-workloads/README.md
+    - "05 - Services & Networking": modules/05-services-and-networking/README.md
+    - "06 - Ingress & DNS": modules/06-ingress-and-dns/README.md
+    - "07 - ConfigMaps, Secrets & Env": modules/07-configmaps-secrets-and-env/README.md
+    - "08 - Storage": modules/08-storage/README.md
+    - "09 - RBAC & Security Basics": modules/09-rbac-and-security-basics/README.md
+    - "10 - Helm & Kustomize": modules/10-helm-and-kustomize/README.md
+    - "11 - Observability": modules/11-observability/README.md
+    - "12 - Troubleshooting": modules/12-troubleshooting/README.md
+    - "13 - GitOps with Argo CD": modules/13-gitops-with-argocd/README.md
+    - "14 - Production Readiness": modules/14-production-readiness/README.md
+    - "15 - Next Steps: CKA & Homelab": modules/15-next-steps-cka-and-homelab/README.md
+  - Labs:
+    - labs/index.md
+    - "Lab 00 - Local Cluster (kind)": labs/00-local-cluster-kind/README.md
+    - "Lab 01 - nginx Deployment": labs/01-nginx-deployment/README.md
+    - "Lab 02 - Service & Networking": labs/02-service-networking/README.md
+    - "Lab 03 - Config & Secrets": labs/03-config-and-secrets/README.md
+    - "Lab 04 - Ingress": labs/04-ingress/README.md
+    - "Lab 05 - Helm Chart": labs/05-helm-chart/README.md
+    - "Lab 06 - Monitoring & Probes": labs/06-monitoring/README.md
+    - "Lab 07 - GitOps with Argo CD": labs/07-gitops-argocd/README.md
+  - Exercises:
+    - exercises/index.md
+    - Beginner: exercises/beginner.md
+    - Intermediate: exercises/intermediate.md
+    - Troubleshooting: exercises/troubleshooting.md
+    - Exercises (DE): exercises/exercises-de.md
+  - Resources:
+    - resources/index.md
+    - Glossary: resources/glossary.md
+    - Cheat Sheet: resources/cheat-sheet.md
+    - Official Docs: resources/official-docs.md
+  - Examples:
+    - examples/index.md
+  - Contributing: contributing.md

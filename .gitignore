@@ -43,6 +43,11 @@ __pycache__/
 *.py[cod]
 .env
 
+# MkDocs
+.venv/
+site/
+.cache/
+
 # Test-Outputs
 test-results/
 coverage/
