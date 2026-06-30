@@ -1,0 +1,6 @@
+apiVersion: v2
+name: meine-app
+description: Ein einfaches Helm Chart für das K8s Learning Path Lab 05
+type: application
+version: 0.1.0
+appVersion: "1.27"

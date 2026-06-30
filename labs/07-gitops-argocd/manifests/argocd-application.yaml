@@ -1,0 +1,22 @@
+# Passe repoURL auf dein eigenes Git-Repository an!
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gitops-demo
+  namespace: argocd
+spec:
+  project: default
+  source:
+    # ERSETZE dies mit deiner Repository-URL:
+    repoURL: https://github.com/DEIN-USER/DEIN-REPO.git
+    targetRevision: HEAD
+    path: k8s
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true

@@ -1,0 +1,48 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Kubernetes Secrets (niemals committen!)
+*secret*.yaml
+!*secret.example.yaml
+!*secret-example.yaml
+
+# kubeconfig (persönliche Zugangsdaten)
+kubeconfig
+*.kubeconfig
+.kube/
+
+# Temporäre Dateien
+*.tmp
+*.bak
+*.log
+
+# Helm
+*.tgz
+charts/
+
+# Terraform (falls genutzt)
+.terraform/
+*.tfstate
+*.tfstate.backup
+
+# Node (falls Tools mit npm genutzt werden)
+node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+.env
+
+# Test-Outputs
+test-results/
+coverage/
