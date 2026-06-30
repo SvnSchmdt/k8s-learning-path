@@ -126,6 +126,16 @@ Du hast das Modul verstanden, wenn du folgende Fragen beantworten kannst:
 - [ ] Was passiert, wenn du eine ConfigMap aktualisierst, die als Env-Variable eingebunden ist?
 - [ ] Welche Alternativen zu nativen K8s-Secrets gibt es für produktive Cluster?
 
+## Definition of Done
+
+Du bist mit diesem Modul fertig, wenn du:
+
+- [ ] eine ConfigMap als Env-Variable und als gemountete Datei in einen Pod eingebunden hast
+- [ ] ein Secret erstellt und dessen Wert im Pod verifiziert hast
+- [ ] erklären kannst warum Base64 kein Schutz ist
+- [ ] weißt, was passiert wenn du eine ConfigMap änderst, die als Env-Variable genutzt wird
+- [ ] alle Checkpoint-Fragen beantworten kannst
+
 ## Weiterführende Links
 
 - [ConfigMaps](https://kubernetes.io/docs/concepts/configuration/configmap/)

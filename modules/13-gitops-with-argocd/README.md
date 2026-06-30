@@ -124,6 +124,16 @@ Du hast das Modul verstanden, wenn du folgende Fragen beantworten kannst:
 - [ ] Was bedeutet "Sync" in Argo CD?
 - [ ] Was ist der Vorteil von GitOps gegenüber manuellem `kubectl apply`?
 
+## Definition of Done
+
+Du bist mit diesem Modul fertig, wenn du:
+
+- [ ] erklären kannst was GitOps ist und was "Single Source of Truth" in diesem Kontext bedeutet
+- [ ] den Unterschied zwischen Push-based und Pull-based Deployment erklären kannst
+- [ ] Argo CD installiert und eine Application erstellt hast
+- [ ] eine Änderung im Git-Repo gepusht hast und sie im Cluster gesehen hast
+- [ ] alle Checkpoint-Fragen beantworten kannst
+
 ## Weiterführende Links
 
 - [Argo CD Dokumentation](https://argo-cd.readthedocs.io/)

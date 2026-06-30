@@ -157,6 +157,16 @@ Du hast das Modul verstanden, wenn du folgende Fragen beantworten kannst:
 - [ ] Was bedeutet `OOMKilled`, und wie behebst du es?
 - [ ] Wie zeigst du die Logs des zuletzt abgestürzten Container-Instances an?
 
+## Definition of Done
+
+Du bist mit diesem Modul fertig, wenn du:
+
+- [ ] den Troubleshooting-Workflow (Status → Events → describe → logs → exec) auswendig anwenden kannst
+- [ ] einen CrashLoopBackOff-Pod ohne Anleitung diagnostiziert hast
+- [ ] einen Service mit leerem Endpoints-Objekt repariert hast (Selector-Fehler)
+- [ ] `kubectl logs --previous` bei einem abgestürzten Container angewendet hast
+- [ ] alle Checkpoint-Fragen beantworten kannst
+
 ## Weiterführende Links
 
 - [Troubleshooting Pods](https://kubernetes.io/docs/tasks/debug/debug-application/debug-pods/)

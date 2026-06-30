@@ -174,6 +174,16 @@ Du hast das Modul verstanden, wenn du folgende Fragen beantworten kannst:
 - [ ] Was macht Kustomize anders als Helm?
 - [ ] Wann würdest du Helm bevorzugen, wann Kustomize?
 
+## Definition of Done
+
+Du bist mit diesem Modul fertig, wenn du:
+
+- [ ] einen Chart aus einem Helm-Repository installiert und mit `--set` konfiguriert hast
+- [ ] ein eigenes Helm Chart erstellt und installiert hast
+- [ ] einen Helm Upgrade und Rollback durchgeführt hast
+- [ ] den Unterschied zwischen Helm und Kustomize erklären und wann du welches nutzt
+- [ ] alle Checkpoint-Fragen beantworten kannst
+
 ## Weiterführende Links
 
 - [Helm Dokumentation](https://helm.sh/docs/)

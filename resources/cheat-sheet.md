@@ -160,6 +160,57 @@ kubectl uncordon <node>                      # Node wieder freigeben
 
 ---
 
+## Standard-Troubleshooting-Workflow
+
+Wenn etwas nicht funktioniert, diese Schritte **der Reihe nach** ausführen:
+
+```bash
+# Schritt 1: Status prüfen – was ist der aktuelle Zustand?
+kubectl get pods
+kubectl get pods -A  # alle Namespaces
+
+# Schritt 2: Events prüfen – was hat Kubernetes zuletzt getan?
+kubectl get events --sort-by=.lastTimestamp
+kubectl get events -A --sort-by=.lastTimestamp
+
+# Schritt 3: describe nutzen – Details und Events zu einer Ressource
+kubectl describe pod <name>
+kubectl describe deployment <name>
+kubectl describe service <name>
+
+# Schritt 4: Logs lesen – was sagt die Anwendung selbst?
+kubectl logs <pod-name>
+kubectl logs <pod-name> --previous    # bei CrashLoopBackOff!
+kubectl logs <pod-name> --all-containers
+
+# Schritt 5: In Pod exec'en – direkt im Container nachschauen
+kubectl exec -it <pod-name> -- sh
+kubectl exec -it <pod-name> -- curl localhost:8080/healthz
+
+# Schritt 6: Service Selector prüfen – zeigt der Service auf die richtigen Pods?
+kubectl describe service <name>       # Selector anzeigen
+kubectl get pods --show-labels        # Labels aller Pods
+
+# Schritt 7: Endpoints prüfen – hat der Service Pods gefunden?
+kubectl get endpoints <service-name>
+# Leer = Selector findet keine Pods
+
+# Schritt 8: Rollout-Status prüfen – steckt ein Update fest?
+kubectl rollout status deployment/<name>
+kubectl rollout history deployment/<name>
+
+# Schritt 9: Ressourcen prüfen – ist Node/Pod überlastet?
+kubectl top nodes
+kubectl top pods
+kubectl describe node <node-name>     # Ressourcen-Druck prüfen
+
+# Schritt 10: Änderung rückgängig machen – zurück zur funktionierenden Version
+kubectl rollout undo deployment/<name>
+kubectl rollout undo deployment/<name> --to-revision=<n>
+```
+
+---
+
 ## Debugging
 
 ```bash

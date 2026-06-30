@@ -1,13 +1,32 @@
 # Lab 00 – Lokalen Cluster mit kind aufsetzen
 
+## Was du baust
+
+Du richtest eine vollständige lokale Kubernetes-Entwicklungsumgebung ein. Am Ende läuft ein Kubernetes-Cluster als Docker-Container auf deinem Rechner, und du kannst ihn über kubectl steuern.
+
+**Kubernetes-Objekte in diesem Lab:** noch keine – dieses Lab legt die Grundlage für alle weiteren.
+
+```text
+Dein Rechner
+    │
+    ├── Docker
+    │     └── kind-Container (= Kubernetes Node)
+    │               └── Kubernetes Control Plane
+    │
+    └── kubectl ──────────────────────────> API Server
+```
+
 ## Ziel
 
-Am Ende dieses Labs läuft ein lokaler Kubernetes-Cluster auf deinem Rechner. Du hast kubectl konfiguriert und kannst mit dem Cluster interagieren.
+Ein lokaler kind-Cluster läuft. kubectl ist konfiguriert und zeigt den Node im Status `Ready`.
 
 ## Voraussetzungen
 
-- [ ] Docker oder Docker Desktop läuft (`docker version` gibt eine Versionsnummer aus)
+- [ ] Docker oder Docker Desktop läuft – prüfen mit `docker version`
 - [ ] Internetverbindung für Downloads
+
+> [!IMPORTANT]
+> Docker muss laufen, bevor du kind verwendest. kind startet Kubernetes-Nodes als Docker-Container.
 
 ## Schritt-für-Schritt
 
@@ -27,8 +46,13 @@ winget install Kubernetes.kind
 ```
 
 ```bash
-# Prüfen
+# Version prüfen
 kind version
+```
+
+Erwartete Ausgabe:
+```text
+kind v0.23.0 go1.21.x linux/amd64
 ```
 
 ### Schritt 2: kubectl installieren
@@ -41,9 +65,17 @@ brew install kubectl
 curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
 chmod +x kubectl
 sudo mv kubectl /usr/local/bin/
+```
 
-# Prüfen
+```bash
+# Version prüfen
 kubectl version --client
+```
+
+Erwartete Ausgabe:
+```text
+Client Version: v1.30.x
+Kustomize Version: v5.x.x
 ```
 
 ### Schritt 3: Cluster erstellen
@@ -52,8 +84,8 @@ kubectl version --client
 kind create cluster --name k8s-lernpfad
 ```
 
-Ausgabe (ca.):
-```
+Erwartete Ausgabe:
+```text
 Creating cluster "k8s-lernpfad" ...
  ✓ Ensuring node image (kindest/node:v1.30.x) 🖼
  ✓ Preparing nodes 📦
@@ -62,9 +94,35 @@ Creating cluster "k8s-lernpfad" ...
  ✓ Installing CNI 🔌
  ✓ Installing StorageClass 💾
 Set kubectl context to "kind-k8s-lernpfad"
+You can now use your cluster with:
+kubectl cluster-info --context kind-k8s-lernpfad
 ```
 
-### Schritt 4: Cluster mit mehreren Nodes (optional)
+> [!TIP]
+> Der erste Start dauert länger, weil das Node-Image heruntergeladen wird (ca. 800 MB). Folgestarts sind schnell.
+
+### Schritt 4: Kontext prüfen
+
+```bash
+kubectl config current-context
+```
+
+Erwartete Ausgabe:
+```text
+kind-k8s-lernpfad
+```
+
+```bash
+kubectl cluster-info
+```
+
+Erwartete Ausgabe:
+```text
+Kubernetes control plane is running at https://127.0.0.1:XXXXX
+CoreDNS is running at https://127.0.0.1:XXXXX/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
+```
+
+### Schritt 5: Cluster mit mehreren Nodes (optional)
 
 Für realistischere Szenarien – erstelle `kind-config.yaml`:
 
@@ -82,36 +140,50 @@ nodes:
 kind create cluster --name k8s-multi --config kind-config.yaml
 ```
 
-### Schritt 5: Cluster-Kontext prüfen
-
-```bash
-kubectl config current-context
-# -> kind-k8s-lernpfad
-
-kubectl cluster-info
-# -> Kubernetes control plane is running at https://127.0.0.1:XXXXX
-```
-
 ## Validierung
 
 ```bash
-# Nodes anzeigen
+# Nodes anzeigen – alle müssen Ready sein
 kubectl get nodes
-# NAME                         STATUS   ROLES           AGE   VERSION
-# k8s-lernpfad-control-plane   Ready    control-plane   2m    v1.30.x
+```
 
-# System-Pods prüfen
+Erwartete Ausgabe:
+```text
+NAME                         STATUS   ROLES           AGE   VERSION
+k8s-lernpfad-control-plane   Ready    control-plane   2m    v1.30.x
+```
+
+```bash
+# System-Pods prüfen – alle sollten Running oder Completed sein
 kubectl get pods -n kube-system
-# Alle Pods sollten Running oder Completed sein
+```
 
+Erwartete Ausgabe (ca.):
+```text
+NAME                                                 READY   STATUS    RESTARTS   AGE
+coredns-xxxxxxxxx-xxxxx                              1/1     Running   0          2m
+coredns-xxxxxxxxx-yyyyy                              1/1     Running   0          2m
+etcd-k8s-lernpfad-control-plane                      1/1     Running   0          2m
+kube-apiserver-k8s-lernpfad-control-plane            1/1     Running   0          2m
+kube-controller-manager-k8s-lernpfad-control-plane   1/1     Running   0          2m
+kube-scheduler-k8s-lernpfad-control-plane            1/1     Running   0          2m
+```
+
+```bash
 # Ersten Test-Pod starten
 kubectl run hello --image=nginx:1.27-alpine --restart=Never
 kubectl get pod hello
-# NAME    READY   STATUS    RESTARTS   AGE
-# hello   1/1     Running   0          10s
+```
 
+Erwartete Ausgabe:
+```text
+NAME    READY   STATUS    RESTARTS   AGE
+hello   1/1     Running   0          15s
+```
+
+```bash
+# Nginx-Startlog ansehen
 kubectl logs hello
-# Nginx-Startlog erscheint
 ```
 
 ## Cleanup
@@ -120,20 +192,26 @@ kubectl logs hello
 # Test-Pod löschen
 kubectl delete pod hello
 
-# Cluster löschen
-kind delete cluster --name k8s-lernpfad
-
 # Alle kind-Cluster anzeigen
 kind get clusters
 ```
 
+> [!CAUTION]
+> Der folgende Befehl löscht den gesamten Cluster und alle darin befindlichen Ressourcen:
+>
+> ```bash
+> kind delete cluster --name k8s-lernpfad
+> ```
+>
+> Für die nächsten Labs muss der Cluster laufen – lösche ihn erst am Ende des Lernpfads.
+
 ## Erweiterungsaufgabe
 
-Erstelle einen kind-Cluster mit einer spezifischen Kubernetes-Version (z.B. v1.29):
+Erstelle einen kind-Cluster mit einer spezifischen Kubernetes-Version. Verfügbare Versionen findest du auf der [kind-Release-Seite](https://github.com/kubernetes-sigs/kind/releases):
 
 ```bash
 kind create cluster --name k8s-v129 \
-  --image kindest/node:v1.29.4@sha256:3abb816a5b1061fb15c6e9e60856ec40d56b7b52bcea5f5f1350bc6e2320b6f8
+  --image kindest/node:v1.29.4
 ```
 
-Welche Kubernetes-Versionen sind verfügbar? Schau auf der [kind-Release-Seite](https://github.com/kubernetes-sigs/kind/releases).
+Vergleiche die kubectl-Ausgabe beider Cluster und beobachte den Versionsunterschied.

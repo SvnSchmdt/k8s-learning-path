@@ -129,11 +129,36 @@ Starte mit [Lab 00: Lokalen Cluster mit kind](labs/00-local-cluster-kind/README.
 
 ---
 
-## Kubernetes wird praktisch gelernt
+## Wie du mit diesem Repo lernst
 
-Lies nicht nur – mach mit. Jedes Modul enthält Aufgaben, jedes Lab eine schrittweise Anleitung. Fehler machen ist ausdrücklich erwünscht. Die [Troubleshooting-Aufgaben](exercises/troubleshooting.md) sind genau dafür da.
+Kubernetes lernst du nicht durch Lesen – sondern durch Machen. Halte dich an diese Regeln:
+
+1. **Führe jedes Lab aus.** Nicht überspringen, nicht nur drüberlesen.
+2. **Mach nach jedem Lab Cleanup.** Residuale Ressourcen stören spätere Labs.
+3. **Provoziere Fehler absichtlich.** `kubectl delete deployment` beobachten. Falsche Image-Tags ausprobieren. Probes kaputt konfigurieren.
+4. **Erkläre Befehle bevor du weitergehst.** Wenn du nicht weißt, was `kubectl apply -f` tut: erkläre es, bevor du zum nächsten Schritt gehst.
+5. **Beantworte Checkpoints ehrlich.** Nicht abhaken, weil du die Frage kennst – sondern weil du sie beantworten *kannst*.
+6. **Führe ein Lernjournal.** Ein Markdown-File, eine Notiz-App, ein Notizbuch – egal. Notiere, was dich überrascht hat.
 
 > "The best way to learn Kubernetes is to break it and fix it." – Community-Weisheit
+
+---
+
+## Getestete Versionen
+
+Die Inhalte dieses Repos sind bewusst versionsarm gehalten – Kernkonzepte ändern sich selten. Labs sollten regelmäßig gegen aktuelle Versionen getestet werden.
+
+| Tool | Empfehlung |
+|------|-----------|
+| Kubernetes | 1.30 oder neuer |
+| kubectl | passend zur Cluster-Version (±1 Minor) |
+| kind | aktuelle stabile Version |
+| Docker / Podman | aktuelle stabile Version |
+| Helm | v3.x |
+| Argo CD | aktuelle stabile Version |
+
+> [!NOTE]
+> Kubernetes garantiert API-Kompatibilität über mehrere Minor-Versionen. Die meisten Beispiele hier laufen auch auf älteren 1.28+ Clustern.
 
 ---
 

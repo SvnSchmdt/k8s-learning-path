@@ -115,6 +115,16 @@ Du hast das Modul verstanden, wenn du folgende Fragen beantworten kannst:
 - [ ] Was ist kubectl, und was ist kubeconfig?
 - [ ] Wie wechselst du zwischen mehreren Cluster-Kontexten?
 
+## Definition of Done
+
+Du bist mit diesem Modul fertig, wenn du:
+
+- [ ] `kind version` und `kubectl version --client` ohne Fehler ausführen kannst
+- [ ] `kind create cluster` erfolgreich ausgeführt hast
+- [ ] `kubectl get nodes` einen Node mit Status `Ready` anzeigt
+- [ ] weißt was kubeconfig ist und wo sie liegt
+- [ ] alle Checkpoint-Fragen beantworten kannst
+
 ## Weiterführende Links
 
 - [kind Dokumentation](https://kind.sigs.k8s.io/)

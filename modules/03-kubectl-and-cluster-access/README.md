@@ -121,6 +121,16 @@ Du hast das Modul verstanden, wenn du folgende Fragen beantworten kannst:
 - [ ] Was ist der Unterschied zwischen `kubectl create` und `kubectl apply`?
 - [ ] Wie extrahierst du mit jsonpath die IP-Adresse eines Pods?
 
+## Definition of Done
+
+Du bist mit diesem Modul fertig, wenn du:
+
+- [ ] zwischen Cluster-Kontexten gewechselt hast (`kubectl config use-context`)
+- [ ] Pods in allen Namespaces angezeigt hast (`kubectl get pods -A`)
+- [ ] mit `-o jsonpath` einen spezifischen Feldwert extrahiert hast
+- [ ] den Unterschied zwischen `kubectl create` und `kubectl apply` erklären kannst
+- [ ] alle Checkpoint-Fragen beantworten kannst
+
 ## Weiterführende Links
 
 - [kubectl Übersicht](https://kubernetes.io/docs/reference/kubectl/)

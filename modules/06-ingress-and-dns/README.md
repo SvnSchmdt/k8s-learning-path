@@ -118,6 +118,16 @@ Du hast das Modul verstanden, wenn du folgende Fragen beantworten kannst:
 - [ ] Was ist der Vorteil von Ingress gegenüber NodePort für produktive HTTP-Services?
 - [ ] Was ist TLS Termination am Ingress?
 
+## Definition of Done
+
+Du bist mit diesem Modul fertig, wenn du:
+
+- [ ] den Unterschied zwischen Ingress Resource und Ingress Controller erklären kannst
+- [ ] einen Ingress Controller installiert hast
+- [ ] Host-basiertes Routing für zwei Services konfiguriert und getestet hast
+- [ ] erklären kannst was TLS Termination am Ingress bedeutet
+- [ ] alle Checkpoint-Fragen beantworten kannst
+
 ## Weiterführende Links
 
 - [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/)

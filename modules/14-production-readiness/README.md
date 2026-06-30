@@ -158,6 +158,16 @@ Du hast das Modul verstanden, wenn du folgende Fragen beantworten kannst:
 - [ ] Wozu dient ein PodDisruptionBudget?
 - [ ] Was bewirkt `maxUnavailable: 0` in einer Rolling-Update-Strategie?
 
+## Definition of Done
+
+Du bist mit diesem Modul fertig, wenn du:
+
+- [ ] Liveness- und Readiness-Probes in einem Deployment konfiguriert hast
+- [ ] Resource Requests und Limits gesetzt hast und den Unterschied erklären kannst
+- [ ] einen HPA erstellt hast und verstehst wie er skaliert
+- [ ] erklären kannst was OOMKilled bedeutet und wie du es vermeidest
+- [ ] alle Checkpoint-Fragen beantworten kannst
+
 ## Weiterführende Links
 
 - [Liveness & Readiness Probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/)

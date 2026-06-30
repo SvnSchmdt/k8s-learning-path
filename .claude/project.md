@@ -75,32 +75,75 @@ Du hast das Modul verstanden, wenn du folgende Fragen beantworten kannst:
 ```markdown
 # Lab XX – [Titel]
 
+## Was du baust
+
+[2–4 Sätze: Was wird in diesem Lab aufgebaut?]
+
+**Kubernetes-Objekte:** Deployment, Service, ...
+
+```text
+[optionales ASCII-Diagramm]
+curl → Service → Pods
+```
+
 ## Ziel
-Was in diesem Lab erreicht wird.
+Was in diesem Lab erreicht wird (messbar).
 
 ## Voraussetzungen
-- kind-Cluster läuft
-- kubectl konfiguriert
-- ggf. weitere Tools
+- [ ] kind-Cluster läuft (`kubectl get nodes` zeigt Ready)
+- [ ] kubectl konfiguriert
+- [ ] ggf. weitere Tools
 
 ## Schritt-für-Schritt
 
-### Schritt 1: ...
+### Schritt 1: [Aktiv formuliert, Verb zuerst]
+
+```bash
+kubectl apply -f manifests/beispiel.yaml
+```
+
+Erwartete Ausgabe:
+```text
+deployment.apps/beispiel created
+```
+
 ### Schritt 2: ...
 
 ## Validierung
+
 ```bash
-kubectl get ...
+kubectl get pods
+# NAME                        READY   STATUS    RESTARTS   AGE
+# beispiel-xxxxxxxxx-xxxxx    1/1     Running   0          30s
 ```
 
 ## Cleanup
+
 ```bash
-kubectl delete ...
+kubectl delete -f manifests/
 ```
+
+> [!NOTE]
+> Falls du einen eigenen Namespace für dieses Lab verwendet hast:
+> `kubectl delete namespace <name>` löscht alle Ressourcen auf einmal.
 
 ## Erweiterungsaufgabe
 Eine weiterführende Aufgabe für Schnelle.
 ```
+
+## Callout-System
+
+Verwende GitHub-kompatible Callouts in Modulen und Labs:
+
+```markdown
+> [!NOTE]       – Hilfreiche Zusatzinfo
+> [!TIP]        – Praktischer Tipp
+> [!IMPORTANT]  – Wichtig für Funktion oder Verständnis
+> [!WARNING]    – Häufige Fehlerquelle
+> [!CAUTION]    – Datenverlust-Risiko oder nicht rückgängig zu machen
+```
+
+**Regel:** Maximal 1–2 Callouts pro Dokument, nicht als Ersatz für Fließtext.
 
 ## Definition of Done für neue Inhalte
 

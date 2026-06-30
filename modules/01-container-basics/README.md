@@ -101,6 +101,16 @@ Du hast das Modul verstanden, wenn du folgende Fragen beantworten kannst:
 - [ ] Was passiert mit einem Container, wenn sein Hauptprozess endet?
 - [ ] Was ist eine Container Registry, und warum wird sie in Kubernetes wichtig?
 
+## Definition of Done
+
+Du bist mit diesem Modul fertig, wenn du:
+
+- [ ] den Unterschied zwischen Container-Image und laufendem Container erklären kannst
+- [ ] einen Container mit eigenem Dockerfile gebaut und gestartet hast
+- [ ] `docker logs`, `docker exec` und `docker stop` ausgeführt hast
+- [ ] erklären kannst warum Container schneller starten als VMs
+- [ ] alle Checkpoint-Fragen beantworten kannst
+
 ## Weiterführende Links
 
 - [Was sind Container?](https://kubernetes.io/docs/concepts/containers/)

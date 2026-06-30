@@ -150,6 +150,16 @@ Du hast das Modul verstanden, wenn du folgende Fragen beantworten kannst:
 - [ ] Wie überprüfst du, ob ein ServiceAccount bestimmte Rechte hat?
 - [ ] Was macht `readOnlyRootFilesystem: true` in einem SecurityContext?
 
+## Definition of Done
+
+Du bist mit diesem Modul fertig, wenn du:
+
+- [ ] den Unterschied zwischen Role und ClusterRole erklären kannst
+- [ ] eine Role, ein ServiceAccount und ein RoleBinding erstellt hast
+- [ ] mit `kubectl auth can-i` die Rechte eines ServiceAccounts geprüft hast
+- [ ] weißt was `readOnlyRootFilesystem: true` in einem SecurityContext bewirkt
+- [ ] alle Checkpoint-Fragen beantworten kannst
+
 ## Weiterführende Links
 
 - [RBAC Autorisierung](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)

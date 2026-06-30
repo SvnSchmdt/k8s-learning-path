@@ -111,6 +111,16 @@ Du hast das Modul verstanden, wenn du folgende Fragen beantworten kannst:
 - [ ] Wann verwendest du ClusterIP, wann NodePort, wann LoadBalancer?
 - [ ] Was zeigt dir `kubectl get endpoints`?
 
+## Definition of Done
+
+Du bist mit diesem Modul fertig, wenn du:
+
+- [ ] erklären kannst warum wir Services brauchen, obwohl Pods IP-Adressen haben
+- [ ] einen ClusterIP-Service erstellt und von innerhalb des Clusters per DNS angesprochen hast
+- [ ] `kubectl get endpoints` ausgeführt und die Ausgabe verstanden hast
+- [ ] den Unterschied zwischen `port` und `targetPort` erklären kannst
+- [ ] alle Checkpoint-Fragen beantworten kannst
+
 ## Weiterführende Links
 
 - [Services](https://kubernetes.io/docs/concepts/services-networking/service/)

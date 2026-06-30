@@ -140,6 +140,16 @@ Du hast das Modul verstanden, wenn du folgende Fragen beantworten kannst:
 - [ ] Was ist eine CRD?
 - [ ] Was sind die nächsten drei konkreten Schritte, die du nach diesem Lernpfad machen willst?
 
+## Definition of Done
+
+Du bist mit diesem Modul fertig, wenn du:
+
+- [ ] den Unterschied zwischen CKA, CKAD und CKS erklären kannst
+- [ ] einen konkreten nächsten Schritt für dein Lernen festgelegt hast (Homelab, CKA, eigenes Projekt)
+- [ ] das Operator-Konzept auf hohem Niveau erklären kannst
+- [ ] weißt was eine CRD ist und wie du vorhandene CRDs in deinem Cluster findest
+- [ ] alle Checkpoint-Fragen beantworten kannst
+
 ## Weiterführende Links
 
 - [CKA Zertifizierung](https://training.linuxfoundation.org/certification/certified-kubernetes-administrator-cka/)

@@ -28,6 +28,34 @@ Keine erfundenen Kommandos. Kein Halbwissen. Im Zweifelsfall: nachschlagen und v
 - **Labs sollen lokal mit kind nachvollziehbar sein** – keine Cloud-Voraussetzungen für Grundlagenlabs
 - **Keine erfundenen kubectl-Flags oder API-Felder** – wenn unsicher, leer lassen und kommentieren
 - **Keine Copy-Paste aus externen Quellen** – eigene Erklärungen, eigene Beispiele
+- **Expected Output nach wichtigen Befehlen** – Lernende müssen wissen, ob ihr Befehl korrekt war
+- **Definition of Done am Ende jedes Moduls** – klar formulierte Abschlusskriterien
+
+## Callout-System
+
+Verwende in Modulen und Labs folgende GitHub-kompatiblen Callouts (sparsam einsetzen):
+
+```markdown
+> [!NOTE]
+> Zusätzliche hilfreiche Information, die das Verständnis vertieft.
+
+> [!TIP]
+> Praktischer Tipp, der die Arbeit mit Kubernetes erleichtert.
+
+> [!IMPORTANT]
+> Wichtiger Punkt für das Verständnis oder die Funktion – nicht überspringen.
+
+> [!WARNING]
+> Häufige Fehlerquelle oder bekanntes Risiko – bitte lesen.
+
+> [!CAUTION]
+> Potenziell gefährliche Aktion, z. B. Löschen von Ressourcen oder Cluster-Änderungen.
+```
+
+**Regeln für Callouts:**
+- Maximal 1–2 pro Modul/Lab
+- Nicht als Ersatz für normalen Text verwenden
+- `[!CAUTION]` nur bei echtem Datenverlust-Risiko
 
 ## Modulstruktur (verpflichtend)
 
@@ -53,11 +81,21 @@ Jedes Lab-README folgt dieser Struktur:
 ```markdown
 # Lab XX – Titel
 
+## Was du baust
+Kurze Beschreibung (2–4 Sätze) + verwendete K8s-Objekte + optionales ASCII-Diagramm.
+
 ## Ziel
 ## Voraussetzungen
 ## Schritt-für-Schritt
+
+Nach wichtigen Befehlen: "Erwartete Ausgabe:" mit realistischem Beispiel.
+
 ## Validierung
+Konkrete kubectl-Checks, die Erfolg bestätigen.
+
 ## Cleanup
+Bevorzugt: kubectl delete -f manifests/ oder kubectl delete namespace <name>.
+
 ## Erweiterungsaufgabe
 ```
 

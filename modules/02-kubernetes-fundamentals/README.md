@@ -99,6 +99,16 @@ Du hast das Modul verstanden, wenn du folgende Fragen beantworten kannst:
 - [ ] Welche Komponente entscheidet, auf welchem Node ein Pod gestartet wird?
 - [ ] Warum gibt es etcd, und was passiert, wenn es ausfällt?
 
+## Definition of Done
+
+Du bist mit diesem Modul fertig, wenn du:
+
+- [ ] die Hauptkomponenten des Control Plane (API Server, etcd, Scheduler, Controller Manager) benennen und ihre Aufgabe erklären kannst
+- [ ] den Unterschied zwischen deklarativem und imperativem Ansatz erklären kannst
+- [ ] einen Pod manuell gestartet, seine Logs gelesen und in ihn exec'ed hast
+- [ ] weißt, was passiert wenn du einen Pod löscht, der von einem Deployment verwaltet wird
+- [ ] alle Checkpoint-Fragen beantworten kannst
+
 ## Weiterführende Links
 
 - [Kubernetes Architektur](https://kubernetes.io/docs/concepts/architecture/)

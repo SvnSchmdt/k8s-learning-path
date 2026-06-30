@@ -120,6 +120,16 @@ Du hast das Modul verstanden, wenn du folgende Fragen beantworten kannst:
 - [ ] Was passiert mit den Daten in einem PVC, wenn der Pod neu gestartet wird?
 - [ ] Was bedeutet `accessMode: ReadWriteOnce`?
 
+## Definition of Done
+
+Du bist mit diesem Modul fertig, wenn du:
+
+- [ ] den Unterschied zwischen emptyDir und PersistentVolumeClaim erklären kannst
+- [ ] einen PVC erstellt und an einen Pod gebunden hast
+- [ ] Daten in den PVC geschrieben, den Pod gelöscht und nach Neustart noch gefunden hast
+- [ ] weißt was eine StorageClass macht
+- [ ] alle Checkpoint-Fragen beantworten kannst
+
 ## Weiterführende Links
 
 - [Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)

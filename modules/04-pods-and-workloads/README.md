@@ -129,6 +129,17 @@ Du hast das Modul verstanden, wenn du folgende Fragen beantworten kannst:
 - [ ] Wann würdest du ein DaemonSet statt einem Deployment verwenden?
 - [ ] Was ist der Unterschied zwischen `kubectl scale` und dem Ändern von `replicas` in der YAML-Datei?
 
+## Definition of Done
+
+Du bist mit diesem Modul fertig, wenn du:
+
+- [ ] den Unterschied zwischen Pod, ReplicaSet und Deployment erklären kannst
+- [ ] ein Deployment mit 3 Replicas erstellt und auf 5 skaliert hast
+- [ ] ein Rolling Update durchgeführt und den Status mit `kubectl rollout status` beobachtet hast
+- [ ] einen Rollback erfolgreich durchgeführt hast
+- [ ] weißt, wann DaemonSet oder StatefulSet sinnvoller als Deployment ist
+- [ ] alle Checkpoint-Fragen beantworten kannst
+
 ## Weiterführende Links
 
 - [Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
