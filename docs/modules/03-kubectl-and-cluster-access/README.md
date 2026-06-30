@@ -1,139 +1,134 @@
-# Modul 03 – kubectl & Cluster-Zugriff
+# Module 03 – kubectl & Cluster Access
 
-## Ziel des Moduls
+## Goal
 
-Nach diesem Modul beherrschst du kubectl als zentrales Werkzeug für die Arbeit mit Kubernetes. Du verstehst kubeconfig, Contexts und kannst effizient mit Ressourcen im Cluster arbeiten.
+After this module you master kubectl as your primary tool for working with Kubernetes. You understand kubeconfig, contexts, and can work efficiently with cluster resources.
 
-## Warum ist das wichtig?
+## Why does this matter?
 
-kubectl ist dein Hauptwerkzeug für alles in Kubernetes. Wer kubectl gut kennt, arbeitet schnell und sicher – auch wenn grafische UIs vorhanden sind. Im CKA-Examen ist kubectl das einzige Werkzeug, das zählt.
+kubectl is your main tool for everything in Kubernetes. Knowing it well means working fast and safely — even when graphical UIs are available. In the CKA exam, kubectl is the only tool that matters.
 
-## Kernkonzepte
+## Key Concepts
 
-- **kubectl:** Kubernetes Command Line Interface. Kommuniziert mit dem API Server über HTTPS.
-- **kubeconfig:** Konfigurationsdatei (Standard: `~/.kube/config`), die Cluster, User und Contexts definiert.
-- **Context:** Kombination aus Cluster + User + Namespace. Wechseln zwischen Contexts = wechseln zwischen Clustern/Umgebungen.
-- **Ressource-Typen:** Kubernetes kennt viele Ressourcentypen (Pods, Deployments, Services...). `kubectl api-resources` listet alle auf.
-- **Output-Formate:** kubectl kann Ausgaben als Table, JSON, YAML oder benutzerdefiniert (jsonpath, go-template) ausgeben.
+- **kubectl:** Kubernetes command-line tool. Communicates with the API server over HTTPS.
+- **kubeconfig:** Configuration file (default: `~/.kube/config`) defining clusters, users, and contexts.
+- **Context:** A combination of cluster + user + namespace. Switching contexts = switching between clusters or environments.
+- **Resource types:** Kubernetes has many resource types (Pods, Deployments, Services…). `kubectl api-resources` lists all of them.
+- **Output formats:** kubectl can output as table, JSON, YAML, or custom (jsonpath, go-template).
 
-## Praxisaufgabe
+## Hands-On Task
 
-### kubeconfig verstehen
+### Understand kubeconfig
 
 ```bash
-# kubeconfig anzeigen
+# View full kubeconfig
 kubectl config view
 
-# Aktuellen Context anzeigen
+# Show current context
 kubectl config current-context
 
-# Alle Contexts auflisten
+# List all contexts
 kubectl config get-contexts
 
-# Zu einem anderen Context wechseln
-kubectl config use-context kind-k8s-lernpfad
+# Switch context
+kubectl config use-context kind-k8s-learning
 ```
 
-### Mit Ressourcen arbeiten
+### Work with resources
 
 ```bash
-# Alle Ressourcentypen anzeigen
+# List all resource types
 kubectl api-resources
 
-# Ressourcen im Cluster anzeigen
+# Get resources
 kubectl get pods
-kubectl get pods -A          # alle Namespaces
-kubectl get pods -n kube-system  # spezifischer Namespace
+kubectl get pods -A              # all namespaces
+kubectl get pods -n kube-system  # specific namespace
 
-# Details einer Ressource
+# Describe a resource
 kubectl describe pod <name>
 
-# YAML-Ausgabe
+# YAML output
 kubectl get pod <name> -o yaml
 
-# JSON-Ausgabe, Feld extrahieren
+# Extract a field with jsonpath
 kubectl get pod <name> -o jsonpath='{.status.podIP}'
 ```
 
-### Ressourcen erstellen und löschen
+### Create and delete resources
 
 ```bash
-# Aus YAML-Datei erstellen
+# Apply from file (declarative, preferred)
 kubectl apply -f manifest.yaml
 
-# Löschen
+# Delete
 kubectl delete -f manifest.yaml
 kubectl delete pod <name>
 
-# Label setzen
-kubectl label pod <name> umgebung=test
-
-# Annotation setzen
+# Set labels and annotations
+kubectl label pod <name> env=test
 kubectl annotate pod <name> info="test-pod"
 ```
 
-### Hilfreiche Shortcuts
+### Useful shortcuts
 
 ```bash
-# Ressourcentypen haben Kurzformen
 kubectl get po      # pods
 kubectl get svc     # services
 kubectl get deploy  # deployments
 kubectl get ns      # namespaces
 kubectl get cm      # configmaps
 
-# Mehrere Ressourcen auf einmal
+# Multiple resource types at once
 kubectl get pods,services
 
-# Watch-Modus
+# Watch mode (real-time updates)
 kubectl get pods -w
 ```
 
-## Beispiel: kubeconfig manuell verstehen
+## kubeconfig Structure
 
 ```yaml
-# Ausschnitt aus ~/.kube/config
 apiVersion: v1
 clusters:
 - cluster:
     server: https://127.0.0.1:6443
-  name: kind-k8s-lernpfad
+  name: kind-k8s-learning
 contexts:
 - context:
-    cluster: kind-k8s-lernpfad
-    user: kind-k8s-lernpfad
-  name: kind-k8s-lernpfad
-current-context: kind-k8s-lernpfad
+    cluster: kind-k8s-learning
+    user: kind-k8s-learning
+  name: kind-k8s-learning
+current-context: kind-k8s-learning
 ```
 
-## Typische Fehler
+## Common Mistakes
 
-- **Falscher Context:** Du arbeitest am falschen Cluster. Immer `kubectl config current-context` prüfen.
-- **Falscher Namespace:** Ressource nicht gefunden, weil im falschen Namespace gesucht. `-n <namespace>` oder `-A` verwenden.
-- **`kubectl create` vs. `kubectl apply`:** `create` schlägt fehl wenn Ressource existiert. `apply` ist idempotent – der bevorzugte Weg.
+- **Wrong context:** You are working on the wrong cluster. Always check `kubectl config current-context` first.
+- **Wrong namespace:** Resource not found because you're in the wrong namespace. Use `-n <namespace>` or `-A`.
+- **`kubectl create` vs. `kubectl apply`:** `create` fails if the resource already exists. `apply` is idempotent — always prefer `apply`.
 
 ## Checkpoint
 
-Du hast das Modul verstanden, wenn du folgende Fragen beantworten kannst:
-- [ ] Was ist eine kubeconfig und wo liegt sie standardmäßig?
-- [ ] Was ist ein Context und wie wechselst du zwischen Contexts?
-- [ ] Wie zeigst du alle Pods in allen Namespaces an?
-- [ ] Was ist der Unterschied zwischen `kubectl create` und `kubectl apply`?
-- [ ] Wie extrahierst du mit jsonpath die IP-Adresse eines Pods?
+- [ ] What is kubeconfig and where does it live by default?
+- [ ] What is a context and how do you switch between contexts?
+- [ ] How do you show all pods across all namespaces?
+- [ ] What is the difference between `kubectl create` and `kubectl apply`?
+- [ ] How do you extract a specific field value using jsonpath?
 
 ## Definition of Done
 
-Du bist mit diesem Modul fertig, wenn du:
+You are done with this module when you:
 
-- [ ] zwischen Cluster-Kontexten gewechselt hast (`kubectl config use-context`)
-- [ ] Pods in allen Namespaces angezeigt hast (`kubectl get pods -A`)
-- [ ] mit `-o jsonpath` einen spezifischen Feldwert extrahiert hast
-- [ ] den Unterschied zwischen `kubectl create` und `kubectl apply` erklären kannst
-- [ ] alle Checkpoint-Fragen beantworten kannst
+- [ ] Have switched between cluster contexts using `kubectl config use-context`
+- [ ] Have listed pods in all namespaces with `kubectl get pods -A`
+- [ ] Have extracted a specific field value using `-o jsonpath`
+- [ ] Can explain the difference between `kubectl create` and `kubectl apply`
+- [ ] Can answer all checkpoint questions
 
-## Weiterführende Links
+## Further Reading
 
-- [kubectl Übersicht](https://kubernetes.io/docs/reference/kubectl/)
-- [kubectl Cheat Sheet (offiziell)](https://kubernetes.io/docs/reference/kubectl/quick-reference/)
-- [kubeconfig verwalten](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
-- [Lokales Cheat Sheet](../../resources/cheat-sheet.md)
+- [kubectl Overview](https://kubernetes.io/docs/reference/kubectl/)
+- [kubectl Quick Reference](https://kubernetes.io/docs/reference/kubectl/quick-reference/)
+- [Configure Access to Multiple Clusters](https://kubernetes.io/docs/tasks/access-application-cluster/configure-access-multiple-clusters/)
+- [Local Cheat Sheet](../../resources/cheat-sheet.md)

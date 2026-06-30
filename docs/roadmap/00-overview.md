@@ -1,62 +1,46 @@
-# Kubernetes Learning Path – Übersicht
+# Learning Path Overview
 
 ## Vision
 
-Dieser Lernpfad führt dich von null bis zu einem soliden, praxiserprobten Kubernetes-Fundament. Am Ende kannst du eigenständig Workloads deployen, debuggen, absichern und mit modernen DevOps-Workflows (Helm, GitOps) verwalten.
+This learning path takes you from zero Kubernetes knowledge to a solid understanding of production-ready Kubernetes operations. By the end, you can independently deploy, configure, observe, secure, and troubleshoot workloads in a Kubernetes cluster.
 
-## Lernphilosophie
+## Learning Philosophy
 
-**Praktisch vor theoretisch.** Jedes Konzept wird sofort angewendet. Du lernst Kubernetes nicht, indem du Dokumentation liest – du lernst es, indem du Cluster startest, Pods zum Absturz bringst und sie wieder reparierst.
+**Hands-on over theory.** Every concept is introduced through something you can run immediately. Reading without doing produces shallow knowledge that fades quickly.
 
-**Progressiv.** Jede Phase baut auf der vorherigen auf. Überspring keine Phase, wenn du noch unsicher bist.
+**Progressive complexity.** Each module and lab builds on the previous one. Don't skip ahead — the order is deliberate.
 
-**Realistisch.** Fehler passieren. Fehlermeldungen sind kein Versagen, sondern Lernmaterial.
+**Learn by breaking things.** The exercises and extension tasks are designed to make you intentionally misconfigure things and then fix them. That is how real debugging instincts develop.
 
----
+**Checkpoints are mandatory.** If you can't answer the checkpoint questions without looking at the module, read it again. The checkpoints test understanding, not recall.
 
-## Phasenübersicht
+## Phase Overview
 
-| Phase | Titel | Dauer |
-|-------|-------|-------|
-| 0 | Voraussetzungen & Setup | 0,5 Woche |
-| 1 | Container & Kubernetes Basics | 1 Woche |
-| 2 | Workloads & Networking | 1 Woche |
-| 3 | Config, Secrets, Storage | 1 Woche |
-| 4 | Security, RBAC, Troubleshooting | 1 Woche |
-| 5 | Helm, Kustomize, Observability | 1,5 Wochen |
-| 6 | GitOps mit Argo CD | 1 Woche |
-| 7 | Production Readiness | 1 Woche |
-| 8 | CKA, Homelab, Real Projects | ongoing |
+| Phase | Topic | Modules | Labs |
+|-------|-------|---------|------|
+| 0 | Prerequisites & Setup | 00 | Lab 00 |
+| 1 | Container Basics | 01 | — |
+| 2 | Kubernetes Fundamentals | 02, 03 | — |
+| 3 | Workloads | 04 | Lab 01 |
+| 4 | Networking | 05, 06 | Lab 02, 03, 04 |
+| 5 | Configuration & Storage | 07, 08 | Lab 03 |
+| 6 | Security, Packaging & Observability | 09, 10, 11, 12 | Lab 05, 06 |
+| 7 | GitOps & Production | 13, 14, 15 | Lab 07 |
 
-**Gesamtdauer:** ca. 8–10 Wochen bei 1–2 Stunden täglich
+## Estimated Time
 
----
+- **Total:** 40–60 hours depending on prior experience
+- **Per module:** 1–2 hours
+- **Per lab:** 30–90 minutes
 
-## Was du nach jeder Phase kannst
+Work at your own pace. Speed is not the goal — depth is.
 
-**Nach Phase 0:** Dein Rechner ist bereit, du hast einen laufenden kind-Cluster.
+## Tools You Will Use
 
-**Nach Phase 1:** Du verstehst was Kubernetes ist, warum es existiert und wie es intern aufgebaut ist.
-
-**Nach Phase 2:** Du kannst Anwendungen als Deployment deployen und über Services erreichbar machen.
-
-**Nach Phase 3:** Du kannst Konfigurationen und Secrets sicher in Pods einbinden und persistente Daten speichern.
-
-**Nach Phase 4:** Du verstehst Kubernetes-Sicherheitskonzepte, kannst RBAC konfigurieren und Probleme systematisch debuggen.
-
-**Nach Phase 5:** Du nutzt Helm und Kustomize für wiederverwendbare Deployments und hast Grundwissen in Observability.
-
-**Nach Phase 6:** Du verstehst GitOps und kannst Argo CD für automatisierte Deployments nutzen.
-
-**Nach Phase 7:** Du kennst die wichtigsten Produktionskonzepte: Health Checks, Resource Management, Disruption Budgets.
-
-**Nach Phase 8:** Du bist bereit für die CKA-Prüfung oder einen echten Cluster.
-
----
-
-## Weiterführende Ressourcen
-
-- [Learning Path (detailliert)](01-learning-path.md)
-- [Checkpoints](02-checkpoints.md)
-- [Offizielle Kubernetes Docs](https://kubernetes.io/docs/home/)
-- [CNCF Landscape](https://landscape.cncf.io/)
+| Tool | Purpose |
+|------|---------|
+| [kind](https://kind.sigs.k8s.io/) | Local Kubernetes cluster |
+| [kubectl](https://kubernetes.io/docs/reference/kubectl/) | Cluster interaction |
+| [Helm](https://helm.sh/) | Application packaging |
+| [Argo CD](https://argo-cd.readthedocs.io/) | GitOps deployments |
+| [Prometheus + Grafana](https://prometheus.io/) | Metrics and dashboards |

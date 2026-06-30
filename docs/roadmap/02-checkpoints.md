@@ -1,128 +1,117 @@
-# Checkpoints – Lernfortschritt prüfen
+# Checkpoints
 
-Diese Checkliste hilft dir, deinen Fortschritt zu verfolgen. Hake ab, was du wirklich kannst – nicht nur, was du gelesen hast.
-
----
-
-## Phase 0: Setup
-
-- [ ] kind ist installiert (`kind version` gibt eine Versionsnummer aus)
-- [ ] `kind create cluster` erstellt erfolgreich einen Cluster
-- [ ] `kubectl cluster-info` zeigt den laufenden API-Server
-- [ ] `kubectl get nodes` zeigt einen Node mit Status `Ready`
-- [ ] Du weißt, was eine kubeconfig ist und wo sie liegt
+Use this checklist to verify your progress. Do not move to the next phase until you can answer all questions in the current phase from memory — without looking at the module.
 
 ---
 
-## Phase 1: Container & K8s Basics
+## Phase 0 — Prerequisites
 
-- [ ] Du kannst erklären, was ein Container-Image ist
-- [ ] Du kannst erklären, was ein Container ist und wie er sich von einer VM unterscheidet
-- [ ] Du weißt, was Kubernetes ist und welche Probleme es löst
-- [ ] Du kannst die Hauptkomponenten des Control Plane nennen (API Server, etcd, Scheduler, Controller Manager)
-- [ ] Du kannst die Node-Komponenten nennen (kubelet, kube-proxy, Container Runtime)
-- [ ] Du hast einen Pod manuell gestartet: `kubectl run`
-- [ ] Du kannst Pod-Logs abrufen: `kubectl logs`
-- [ ] Du kannst in einen Pod exec'en: `kubectl exec -it`
-- [ ] Du weißt, was ein Namespace ist und hast einen erstellt
+- [ ] Docker is installed and `docker version` works
+- [ ] kind is installed and `kind version` works
+- [ ] kubectl is installed and `kubectl version --client` works
+- [ ] Helm is installed and `helm version` works
+- [ ] You have created a kind cluster and verified it with `kubectl get nodes`
+- [ ] You can explain what kubeconfig is and where `~/.kube/config` lives
+- [ ] You can switch between cluster contexts with `kubectl config use-context`
 
 ---
 
-## Phase 2: Workloads & Networking
+## Phase 1 — Container Basics
 
-- [ ] Du kannst den Unterschied zwischen Pod, ReplicaSet und Deployment erklären
-- [ ] Du hast ein Deployment mit mehreren Replicas erstellt
-- [ ] Du hast ein Deployment skaliert: `kubectl scale`
-- [ ] Du weißt, was Labels und Selectors sind und wozu sie dienen
-- [ ] Du hast einen ClusterIP-Service erstellt und verstehst, wozu er dient
-- [ ] Du hast einen NodePort-Service erstellt und von außen aufgerufen
-- [ ] Du weißt, was ein Ingress Controller ist
-- [ ] Du hast einen Ingress erstellt und getestet
-- [ ] Du hast ein Rolling Update durchgeführt und einen Rollback gemacht
+- [ ] You can explain the difference between an image and a running container
+- [ ] You can build an image from a Dockerfile
+- [ ] You can run a container, exec into it, read its logs, and stop it
+- [ ] You know what a container registry is and have pushed an image to one
+- [ ] You can explain why `latest` is a problematic tag in production
+- [ ] You understand what layer caching is and how it affects build speed
 
 ---
 
-## Phase 3: Config, Secrets & Storage
+## Phase 2 — Kubernetes Fundamentals
 
-- [ ] Du hast eine ConfigMap erstellt
-- [ ] Du hast eine ConfigMap als Umgebungsvariable in einen Pod eingebunden
-- [ ] Du hast eine ConfigMap als Datei in einen Pod gemountet
-- [ ] Du hast ein Secret erstellt (Base64-kodiert)
-- [ ] Du weißt, warum Base64 kein Schutz ist und was Alternativen sind (Vault, Sealed Secrets)
-- [ ] Du hast ein PersistentVolumeClaim erstellt
-- [ ] Du hast ein PVC an einen Pod gebunden und Daten persistiert
-- [ ] Du hast einen Pod-Neustart überlebt und Daten noch gefunden
+- [ ] You can name all four control plane components and explain what each one does
+- [ ] You can explain what etcd stores and why it matters
+- [ ] You can explain the difference between declarative (`kubectl apply`) and imperative (`kubectl create`) configuration
+- [ ] You know the Pod lifecycle states: Pending, Running, Succeeded, Failed, CrashLoopBackOff
+- [ ] You can create a Pod from a YAML manifest and verify it is Running
+- [ ] You can explain what a Namespace is and list all namespaces
 
 ---
 
-## Phase 4: RBAC & Troubleshooting
+## Phase 3 — Workloads
 
-- [ ] Du kannst erklären, was RBAC ist
-- [ ] Du hast eine Role mit eingeschränkten Rechten erstellt
-- [ ] Du hast ein RoleBinding erstellt
-- [ ] Du hast einen ServiceAccount erstellt und an einen Pod gebunden
-- [ ] Du weißt, was ein SecurityContext ist
-- [ ] Du kannst `kubectl describe pod` lesen und Events verstehen
-- [ ] Du kannst einen Pod mit `ImagePullBackOff` diagnostizieren und beheben
-- [ ] Du kannst einen Pod mit `CrashLoopBackOff` diagnostizieren
-- [ ] Du weißt, was `Pending` bedeutet und wie du die Ursache findest
-- [ ] Du hast `kubectl get events --sort-by=.lastTimestamp` benutzt
+- [ ] You can explain the Deployment → ReplicaSet → Pod hierarchy
+- [ ] You can scale a Deployment up and down
+- [ ] You can perform a rolling update and verify with `kubectl rollout status`
+- [ ] You can roll back a Deployment to a previous version
+- [ ] You understand why you should never edit Pods directly when managed by a Deployment
+- [ ] You can explain what resource requests and limits are (not yet how to tune them)
 
 ---
 
-## Phase 5: Helm, Kustomize & Observability
+## Phase 4 — Networking
 
-- [ ] Du hast Helm installiert (`helm version`)
-- [ ] Du hast einen Chart aus einem Repository installiert
-- [ ] Du hast einen Chart mit `helm upgrade` aktualisiert
-- [ ] Du hast einen Chart mit `helm rollback` zurückgerollt
-- [ ] Du hast ein eigenes Helm Chart erstellt
-- [ ] Du weißt, was Kustomize ist und hast einen overlay erstellt
-- [ ] Du weißt, was Prometheus ist und was es sammelt
-- [ ] Du kannst `kubectl top pods` ausführen (Metrics Server muss laufen)
-- [ ] Du hast `kubectl logs` mit `-f` (follow) und `--previous` verwendet
+- [ ] You can explain the difference between ClusterIP, NodePort, and LoadBalancer
+- [ ] You know the Kubernetes DNS format: `<service>.<namespace>.svc.cluster.local`
+- [ ] You can check if a Service has Endpoints and know what empty Endpoints means
+- [ ] You can access a Service from inside the cluster using its DNS name
+- [ ] You can explain the difference between an Ingress Resource and an Ingress Controller
+- [ ] You can configure host-based routing for two Services in one Ingress
 
 ---
 
-## Phase 6: GitOps
+## Phase 5 — Configuration & Storage
 
-- [ ] Du kannst erklären, was GitOps ist
-- [ ] Du kennst den Unterschied zwischen Push-based und Pull-based Deployment
-- [ ] Du hast Argo CD installiert
-- [ ] Du hast eine Argo CD Application erstellt
-- [ ] Du hast einen Sync-Zyklus beobachtet
-- [ ] Du hast eine Änderung im Git-Repository gemacht und sie automatisch deployt gesehen
-
----
-
-## Phase 7: Production Readiness
-
-- [ ] Du weißt, was eine Liveness Probe ist und wann sie feuert
-- [ ] Du weißt, was eine Readiness Probe ist und wie sie sich von Liveness unterscheidet
-- [ ] Du hast Resource Requests und Limits gesetzt
-- [ ] Du weißt, was passiert, wenn ein Pod sein Memory Limit überschreitet (OOMKilled)
-- [ ] Du hast einen Horizontal Pod Autoscaler konfiguriert
-- [ ] Du weißt, was ein PodDisruptionBudget ist
-- [ ] Du kannst eine `RollingUpdate`-Strategie konfigurieren (maxSurge, maxUnavailable)
+- [ ] You can create a ConfigMap and inject it as both environment variables and mounted files
+- [ ] You know the update behavior difference: env vars are static, volume mounts update live
+- [ ] You can create a Secret and access its values from inside a Pod
+- [ ] You understand why Secrets must not be committed to Git
+- [ ] You can create a PVC and bind it to a Pod
+- [ ] You can explain what `Pending` PVC status means and what causes it
+- [ ] You know the difference between `emptyDir` and a PVC
 
 ---
 
-## Phase 8: CKA & Real World
+## Phase 6 — Security, Packaging & Observability
 
-- [ ] Du hast Killer.sh oder eine CKA-Übungsumgebung genutzt
-- [ ] Du hast eine eigene App vollständig in Kubernetes deployt (von der Containerisierung bis zum Ingress)
-- [ ] Du hast einen Cluster mit kubeadm oder k3s aufgesetzt
-- [ ] Du weißt, was eine CRD ist
-- [ ] Du hast das Operator-Konzept verstanden
+- [ ] You can create a Role, RoleBinding, and ServiceAccount
+- [ ] You can verify permissions with `kubectl auth can-i`
+- [ ] You can explain the difference between Role and ClusterRole
+- [ ] You know what `runAsNonRoot: true` does in a SecurityContext
+- [ ] You can install a Helm Chart from a repository with custom values
+- [ ] You can upgrade and roll back a Helm release
+- [ ] You can explain the difference between Helm and Kustomize
+- [ ] You can configure liveness and readiness probes
+- [ ] You know what happens when a liveness probe fails vs. a readiness probe fails
+- [ ] You can diagnose a CrashLoopBackOff using `kubectl logs --previous` and `kubectl describe pod`
+- [ ] You can use `kubectl top pods` and know what Metrics Server does
 
 ---
 
-## Gesamt-Checkpoint
+## Phase 7 — GitOps & Production Readiness
 
-Du bist bereit für einen echten Kubernetes-Job oder die CKA-Prüfung, wenn:
+- [ ] You can explain the four GitOps principles
+- [ ] You can explain the difference between push-based CI/CD and pull-based GitOps
+- [ ] You have installed Argo CD and deployed an Application that stays Synced/Healthy
+- [ ] You understand what Argo CD self-heal does
+- [ ] You can configure resource requests and limits for a container
+- [ ] You can create an HPA and explain what `averageUtilization: 70` means
+- [ ] You can create a PodDisruptionBudget and explain what it protects against
+- [ ] You know your concrete next step: CKA exam, homelab, or a personal project
 
-- [ ] Alle Phasen-Checkpoints abgehakt sind
-- [ ] Du Troubleshooting-Aufgaben lösen kannst, ohne nachzuschauen
-- [ ] Du ein eigenes Helm Chart deployen und Upgrades durchführen kannst
-- [ ] Du Argo CD für eine App konfiguriert hast
-- [ ] Du die RBAC-Konzepte sicher anwenden kannst
+---
+
+## Full Production Readiness Checklist
+
+When you can review a Deployment spec and answer all of these from memory, you are ready for a junior cloud/DevOps role:
+
+- [ ] Image tag is specific (not `latest`)
+- [ ] `replicas >= 2`
+- [ ] Resource requests and limits set
+- [ ] Liveness probe configured
+- [ ] Readiness probe configured
+- [ ] `runAsNonRoot: true`
+- [ ] Secrets come from a Secret object (not hardcoded)
+- [ ] HPA configured for CPU/memory
+- [ ] PodDisruptionBudget defined
+- [ ] Application handles SIGTERM gracefully

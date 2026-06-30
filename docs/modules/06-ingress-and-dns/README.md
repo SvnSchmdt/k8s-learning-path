@@ -1,47 +1,45 @@
-# Modul 06 – Ingress & DNS
+# Module 06 – Ingress & DNS
 
-## Ziel des Moduls
+## Goal
 
-Nach diesem Modul kannst du HTTP/HTTPS-Traffic über einen Ingress Controller ins Cluster routen. Du verstehst, was ein Ingress Controller ist, wie Routing-Regeln funktionieren und wie du lokalen DNS für Tests konfigurierst.
+After this module you can route HTTP/HTTPS traffic via an Ingress Controller into a cluster. You understand what an Ingress Controller is, how routing rules work, and how to configure local DNS for testing.
 
-## Warum ist das wichtig?
+## Why does this matter?
 
-Mit Services allein kann man Anwendungen erreichbar machen, aber für produktiven HTTP-Betrieb mit mehreren Services, Path-basiertem Routing und TLS brauchst du Ingress. Es ist der Standard-Weg, externe HTTP-Anfragen zu Kubernetes-Services zu routen.
+With Services alone you can make applications reachable, but for production HTTP traffic with multiple services, path-based routing, and TLS, you need Ingress. It is the standard way to route external HTTP requests to Kubernetes Services.
 
-## Kernkonzepte
+## Key Concepts
 
-- **Ingress Resource:** Ein Kubernetes-Objekt, das HTTP(S)-Routing-Regeln definiert. Es legt fest, welche URL zu welchem Service weitergeleitet wird.
-- **Ingress Controller:** Eine Komponente, die Ingress Resources liest und Traffic tatsächlich weiterleitet. Kubernetes bringt keinen Ingress Controller mit – du musst einen installieren (z.B. nginx-ingress, Traefik, Contour).
-- **Host-basiertes Routing:** Verschiedene Domains (z.B. `app.example.com`, `api.example.com`) leiten zu verschiedenen Services.
-- **Path-basiertes Routing:** Verschiedene Pfade (`/app`, `/api`) leiten zu verschiedenen Services.
-- **TLS Termination:** HTTPS-Verbindungen werden am Ingress terminiert, intern läuft HTTP.
+- **Ingress Resource:** A Kubernetes object that defines HTTP(S) routing rules. It specifies which URL maps to which Service.
+- **Ingress Controller:** A component that reads Ingress resources and actually routes the traffic. Kubernetes does not ship with one — you must install one (e.g., nginx-ingress, Traefik, Contour).
+- **Host-based routing:** Different domains (e.g., `app.example.com`, `api.example.com`) route to different Services.
+- **Path-based routing:** Different paths (`/app`, `/api`) route to different Services.
+- **TLS Termination:** HTTPS connections are terminated at the Ingress; traffic runs as HTTP internally.
 
 ## Ingress Controller vs. Ingress Resource
 
 ```
-Extern → [Ingress Controller] → [Ingress Resource] → [Service] → [Pods]
+External → [Ingress Controller] → [Ingress Resource] → [Service] → [Pods]
 ```
 
-Der Ingress Controller ist ein laufender Pod/Deployment. Die Ingress Resource ist nur eine Konfiguration. Ohne Controller macht eine Ingress Resource nichts.
+The Ingress Controller is a running Deployment. The Ingress Resource is just configuration. Without a Controller, an Ingress Resource does nothing.
 
-## Praxisaufgabe
+## Hands-On Task
 
-### Nginx Ingress Controller in kind installieren
+### Install nginx Ingress Controller in kind
 
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
 
-# Warten bis der Controller läuft
 kubectl wait --namespace ingress-nginx \
   --for=condition=ready pod \
   --selector=app.kubernetes.io/component=controller \
   --timeout=90s
 ```
 
-### Ingress Resource erstellen
+### Create an Ingress Resource
 
 ```yaml
-# ingress.yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -69,67 +67,44 @@ kubectl get ingress
 kubectl describe ingress nginx-ingress
 ```
 
-### Lokales DNS für Tests
-
-Da `nginx.local` nicht existiert, musst du es lokal auflösen:
+### Local DNS for testing
 
 ```bash
-# /etc/hosts Eintrag (macOS/Linux)
-# Erst die kind-Node-IP ermitteln
-kubectl get nodes -o wide
-# INTERNAL-IP notieren (z.B. 172.18.0.2)
-
-# Eintrag hinzufügen
+# Add to /etc/hosts
 echo "127.0.0.1 nginx.local" | sudo tee -a /etc/hosts
-```
 
-Bei kind mit Port-Forwarding:
-
-```bash
+# Port-forward the Ingress Controller
 kubectl port-forward -n ingress-nginx service/ingress-nginx-controller 8080:80
-# -> http://nginx.local:8080 (mit /etc/hosts Eintrag für 127.0.0.1)
+
+# Test
+curl http://nginx.local:8080
 ```
 
-## Beispiel-Kommandos
+## Common Mistakes
 
-```bash
-# Alle Ingresses anzeigen
-kubectl get ingress
-
-# Ingress-Details
-kubectl describe ingress nginx-ingress
-
-# Ingress Controller Logs prüfen
-kubectl logs -n ingress-nginx deployment/ingress-nginx-controller
-```
-
-## Typische Fehler
-
-- **Kein Ingress Controller installiert:** Ingress Resource wird erstellt, aber nichts passiert. Es fehlt der Controller.
-- **`ingressClassName` falsch oder fehlend:** Der Ingress wird ignoriert. Die Class muss mit dem installierten Controller übereinstimmen.
-- **Host im Browser falsch:** `nginx.local` in /etc/hosts eingetragen, aber der Port stimmt nicht.
-- **Backend-Service nicht gefunden:** Ingress kann Service nicht erreichen. Service-Name und Port im Ingress prüfen.
+- **No Ingress Controller installed:** The Ingress Resource is created but nothing happens. The controller is missing.
+- **Wrong or missing `ingressClassName`:** The Ingress is ignored. The class must match the installed controller.
+- **Backend Service not found:** The Ingress cannot reach the Service. Check Service name and port in the Ingress spec.
 
 ## Checkpoint
 
-Du hast das Modul verstanden, wenn du folgende Fragen beantworten kannst:
-- [ ] Was ist der Unterschied zwischen Ingress Resource und Ingress Controller?
-- [ ] Wie routest du `/app` zu Service A und `/api` zu Service B?
-- [ ] Was ist der Vorteil von Ingress gegenüber NodePort für produktive HTTP-Services?
-- [ ] Was ist TLS Termination am Ingress?
+- [ ] What is the difference between an Ingress Resource and an Ingress Controller?
+- [ ] How do you route `/app` to Service A and `/api` to Service B?
+- [ ] What is the advantage of Ingress over NodePort for production HTTP services?
+- [ ] What is TLS termination at the Ingress?
 
 ## Definition of Done
 
-Du bist mit diesem Modul fertig, wenn du:
+You are done with this module when you:
 
-- [ ] den Unterschied zwischen Ingress Resource und Ingress Controller erklären kannst
-- [ ] einen Ingress Controller installiert hast
-- [ ] Host-basiertes Routing für zwei Services konfiguriert und getestet hast
-- [ ] erklären kannst was TLS Termination am Ingress bedeutet
-- [ ] alle Checkpoint-Fragen beantworten kannst
+- [ ] Can explain the difference between Ingress Resource and Ingress Controller
+- [ ] Have installed an Ingress Controller and verified it is running
+- [ ] Have configured host-based routing for at least one Service and tested it
+- [ ] Can explain what TLS termination at the Ingress means
+- [ ] Can answer all checkpoint questions
 
-## Weiterführende Links
+## Further Reading
 
 - [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/)
-- [Ingress Controller](https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/)
+- [Ingress Controllers](https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/)
 - [nginx Ingress Controller](https://kubernetes.github.io/ingress-nginx/)

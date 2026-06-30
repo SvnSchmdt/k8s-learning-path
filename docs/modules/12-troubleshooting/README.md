@@ -1,174 +1,124 @@
-# Modul 12 – Troubleshooting
+# Module 12 – Troubleshooting
 
-## Ziel des Moduls
+## Goal
 
-Nach diesem Modul kannst du Kubernetes-Probleme systematisch debuggen. Du kennst die häufigsten Fehlerzustände und weißt, wie du von Symptom zur Ursache kommst.
+After this module you have a systematic workflow for debugging broken workloads. You know the most common failure patterns and how to diagnose them quickly.
 
-## Warum ist das wichtig?
+## Why does this matter?
 
-Dinge gehen kaputt. Das ist normal. Der Unterschied zwischen Anfängern und Profis liegt nicht darin, ob Fehler passieren – sondern wie schnell man sie findet und behebt. Systematisches Troubleshooting ist eine der wichtigsten Kubernetes-Skills.
+Things break in Kubernetes. The question is not if, but when. Engineers who can diagnose problems systematically are vastly more effective than those who guess. This module gives you the mental model and the commands to debug any situation.
 
-## Kernkonzepte
+## Key Concepts
 
-- **Pod-Status:** Der Status eines Pods gibt erste Hinweise: `Pending`, `Running`, `Succeeded`, `Failed`, `Unknown`, `CrashLoopBackOff`, `ImagePullBackOff`, `OOMKilled`.
-- **Events:** Kubernetes protokolliert alle wichtigen Ereignisse. Events sind oft die schnellste Diagnosemöglichkeit.
-- **describe:** `kubectl describe` zeigt alle Details einer Ressource inkl. Events.
-- **logs:** Pod-Logs zeigen, was der Container geschrieben hat (stdout/stderr).
-- **exec:** Direkter Zugriff auf einen laufenden Container zur Diagnose.
+- **CrashLoopBackOff:** A container crashes repeatedly. Kubernetes backs off exponentially before retrying. Usually caused by application errors, misconfiguration, or a failing liveness probe.
+- **ImagePullBackOff / ErrImagePull:** Container image cannot be pulled. Wrong tag, private registry without credentials, or network issue.
+- **Pending:** Pod is waiting to be scheduled. Insufficient node resources, unmet tolerations/affinity, or missing PVC.
+- **OOMKilled:** Container was killed because it exceeded its memory limit.
+- **Terminating (stuck):** Pod is stuck in Terminating state. Often a finalizer issue.
 
-## Troubleshooting-Workflow
-
-```
-1. Status prüfen     → kubectl get pods
-2. Events lesen      → kubectl describe pod <name>
-3. Logs analysieren  → kubectl logs <name>
-4. In Pod exec'en    → kubectl exec -it <name> -- sh
-5. Networking prüfen → kubectl run test-pod --image=busybox --rm -it -- sh
-6. Ressourcen prüfen → kubectl top pods / kubectl describe node
-```
-
-## Häufige Fehlerzustände
-
-### ImagePullBackOff / ErrImagePull
+## 10-Step Troubleshooting Workflow
 
 ```bash
+# Step 1 — Where is the problem?
+kubectl get pods -A | grep -v Running
+
+# Step 2 — What is the Pod's status?
+kubectl get pod <name> -o wide
+
+# Step 3 — What happened?
 kubectl describe pod <name>
-# Events zeigen: Failed to pull image ...
+# → Read the Events section at the bottom carefully
+
+# Step 4 — What do the logs say?
+kubectl logs <name>
+kubectl logs <name> -c <container>    # multi-container Pod
+kubectl logs <name> --previous        # logs from the crashed container
+
+# Step 5 — Is the application reachable?
+kubectl get endpoints <service-name>
+# → Should not be empty
+
+# Step 6 — Can the application reach other services?
+kubectl run test --rm -it --image=curlimages/curl -- sh
+# → curl http://<service>.<namespace>.svc.cluster.local
+
+# Step 7 — Are there resource constraints?
+kubectl top pod <name>
+kubectl describe node <node-name> | grep -A5 "Allocated resources"
+
+# Step 8 — Are there cluster-level events?
+kubectl get events --sort-by='.lastTimestamp'
+
+# Step 9 — Check probe configuration
+kubectl get pod <name> -o yaml | grep -A10 "livenessProbe"
+
+# Step 10 — Check RBAC (if service account issues)
+kubectl auth can-i <verb> <resource> --as=system:serviceaccount:<ns>:<sa>
 ```
 
-**Ursachen:**
-- Image-Name falsch geschrieben
-- Image-Tag existiert nicht
-- Registry nicht erreichbar
-- Fehlende Pull-Secrets für private Registry
-
-**Lösung:**
-```bash
-# Image lokal prüfen
-docker pull <image-name>
-
-# ImagePullSecret für private Registry
-kubectl create secret docker-registry registry-secret \
-  --docker-server=registry.example.com \
-  --docker-username=user \
-  --docker-password=geheim
-```
+## Common Failure Patterns
 
 ### CrashLoopBackOff
 
-Pod startet, crasht, wird neu gestartet, crasht wieder...
-
 ```bash
-# Logs des aktuellen Containers
-kubectl logs <pod-name>
+# Get logs from the crashed container
+kubectl logs <pod> --previous
 
-# Logs des vorherigen Containers (vor dem letzten Crash)
-kubectl logs <pod-name> --previous
-
-# Details zum Absturz
-kubectl describe pod <pod-name>
-# Suche nach: Exit Code, Last State
+# Check probe settings — initialDelaySeconds may be too low
+kubectl describe pod <pod> | grep -A5 "Liveness"
 ```
 
-**Ursachen:**
-- Anwendungsfehler (Konfiguration falsch, fehlende Env-Variable)
-- Falsche Startkommandos im Container
-- Liveness Probe zu aggressiv konfiguriert
-- Berechtigungsproblem
-
-### Pending
-
-Pod läuft nicht, bleibt im Status `Pending`.
+### ImagePullBackOff
 
 ```bash
-kubectl describe pod <name>
-# Events: Insufficient cpu / Insufficient memory / No nodes available
+kubectl describe pod <pod>
+# Look for: "Failed to pull image" or "not found"
+
+# Wrong tag? Check available tags in registry
+# Private registry? Create and reference an imagePullSecret
 ```
 
-**Ursachen:**
-- Nicht genug Ressourcen (CPU/Memory) auf Nodes verfügbar
-- Node Affinity oder Taints verhindern Scheduling
-- PVC kann nicht gebunden werden
-
-### OOMKilled (Out of Memory)
+### Pending — insufficient resources
 
 ```bash
-kubectl describe pod <name>
-# Last State: Terminated, Reason: OOMKilled
+kubectl describe pod <pod>
+# Look for: "0/1 nodes are available: 1 Insufficient cpu"
+
+kubectl describe node <node>
+# Check "Allocatable" vs "Allocated resources"
 ```
 
-**Ursache:** Container hat das Memory-Limit überschritten.  
-**Lösung:** Memory-Limit erhöhen oder Memory-Leak in der Anwendung finden.
-
-### Service antwortet nicht
+### Empty Service Endpoints
 
 ```bash
-# 1. Läuft der Pod überhaupt?
-kubectl get pods -l app=<label>
+kubectl get endpoints <service>
+# If empty: labels on Pods don't match the Service selector
 
-# 2. Sind Endpoints korrekt?
-kubectl get endpoints <service-name>
-
-# 3. Selector stimmt?
-kubectl describe service <name>
-kubectl describe pod <pod-name> | grep Labels
-
-# 4. Von innen testen
-kubectl run test --image=busybox:1.36 --rm -it --restart=Never -- \
-  wget -qO- http://<service-name>
+kubectl get pods --show-labels
+kubectl describe service <service> | grep Selector
 ```
-
-## Nützliche Debugging-Kommandos
-
-```bash
-# Pod-Details mit Events
-kubectl describe pod <name>
-
-# Ressourcenverbrauch
-kubectl top pods
-kubectl top nodes
-
-# Node-Auslastung
-kubectl describe node <node-name>
-
-# Events des gesamten Clusters, nach Zeit sortiert
-kubectl get events --sort-by=.lastTimestamp -A
-
-# Temporären Debug-Container starten
-kubectl debug -it <pod-name> --image=busybox --target=<container-name>
-
-# Netzwerktest von innerhalb des Clusters
-kubectl run nettest --image=busybox:1.36 --rm -it --restart=Never -- \
-  nslookup kubernetes.default.svc.cluster.local
-```
-
-## Typische Fehler beim Troubleshooting
-
-- **Nur Status schauen, nicht describe:** `kubectl get pods` zeigt nur den Status. `describe` zeigt die Ursache.
-- **Falsche Logs:** Bei CrashLoopBackOff `--previous` vergessen. Aktuelle Logs sind leer, weil der Container gerade neu gestartet hat.
-- **Namespace vergessen:** Ressource in falschem Namespace gesucht.
 
 ## Checkpoint
 
-Du hast das Modul verstanden, wenn du folgende Fragen beantworten kannst:
-- [ ] Wie findest du heraus, warum ein Pod im Status `CrashLoopBackOff` ist?
-- [ ] Was zeigt `kubectl describe pod` was `kubectl get pod` nicht zeigt?
-- [ ] Wie testest du, ob ein Service korrekt auf Pods verweist?
-- [ ] Was bedeutet `OOMKilled`, und wie behebst du es?
-- [ ] Wie zeigst du die Logs des zuletzt abgestürzten Container-Instances an?
+- [ ] What does CrashLoopBackOff mean and what are three common causes?
+- [ ] What is the first thing you check when a Pod is Pending?
+- [ ] How do you get logs from a container that has already restarted?
+- [ ] What does empty Endpoints output tell you?
+- [ ] What causes OOMKilled and how do you prevent it?
 
 ## Definition of Done
 
-Du bist mit diesem Modul fertig, wenn du:
+You are done with this module when you:
 
-- [ ] den Troubleshooting-Workflow (Status → Events → describe → logs → exec) auswendig anwenden kannst
-- [ ] einen CrashLoopBackOff-Pod ohne Anleitung diagnostiziert hast
-- [ ] einen Service mit leerem Endpoints-Objekt repariert hast (Selector-Fehler)
-- [ ] `kubectl logs --previous` bei einem abgestürzten Container angewendet hast
-- [ ] alle Checkpoint-Fragen beantworten kannst
+- [ ] Have worked through the 10-step troubleshooting workflow on a broken workload
+- [ ] Can explain CrashLoopBackOff, ImagePullBackOff, and OOMKilled
+- [ ] Have diagnosed an empty Endpoints issue and fixed the label selector
+- [ ] Have used `kubectl logs --previous` to diagnose a crashed container
+- [ ] Can answer all checkpoint questions
 
-## Weiterführende Links
+## Further Reading
 
-- [Troubleshooting Pods](https://kubernetes.io/docs/tasks/debug/debug-application/debug-pods/)
-- [Troubleshooting Nodes](https://kubernetes.io/docs/tasks/debug/debug-cluster/debug-cluster/)
-- [kubectl Troubleshooting](https://kubernetes.io/docs/tasks/debug/)
+- [Debug Pods](https://kubernetes.io/docs/tasks/debug/debug-application/debug-pods/)
+- [Debug Services](https://kubernetes.io/docs/tasks/debug/debug-application/debug-service/)
+- [Application Introspection and Debugging](https://kubernetes.io/docs/tasks/debug/debug-application/)
+- [Troubleshooting Exercises](../../exercises/troubleshooting.md)

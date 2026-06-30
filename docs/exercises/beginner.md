@@ -1,160 +1,206 @@
-# Beginner-Übungen
+# Beginner Exercises
 
-## Übung 1: Ersten Pod erstellen
-
-**Aufgabe:** Erstelle einen Pod namens `mein-erster-pod` mit dem Image `nginx:1.27-alpine` im Namespace `default`. Warte bis er läuft, zeige seine IP-Adresse an.
-
-**Hinweise:**
-- `kubectl run` oder YAML-Manifest
-- `kubectl get pod -o wide` zeigt die IP-Adresse
-
-<details>
-<summary>Lösung anzeigen</summary>
-
-```bash
-kubectl run mein-erster-pod --image=nginx:1.27-alpine
-kubectl get pod mein-erster-pod -o wide
-# Alternativ mit YAML:
-# kubectl apply -f - <<EOF
-# apiVersion: v1
-# kind: Pod
-# metadata:
-#   name: mein-erster-pod
-# spec:
-#   containers:
-#   - name: nginx
-#     image: nginx:1.27-alpine
-# EOF
-```
-</details>
+Work through these exercises after completing Modules 00–04 (Phases 0–3). Solve each task before expanding the solution.
 
 ---
 
-## Übung 2: Deployment mit 3 Replicas
+## Exercise 1 — Create a Pod
 
-**Aufgabe:** Erstelle ein Deployment namens `web-app` mit dem Image `nginx:1.27-alpine` und 3 Replicas. Skaliere es dann auf 5 Replicas.
+**Task:** Create a Pod named `web` running `nginx:1.27-alpine` in the `default` namespace. Verify it is Running. Then delete it.
 
 <details>
-<summary>Lösung anzeigen</summary>
+<summary>Solution</summary>
 
 ```bash
-kubectl create deployment web-app --image=nginx:1.27-alpine --replicas=3
-kubectl get pods -l app=web-app
-kubectl scale deployment web-app --replicas=5
-kubectl get pods -l app=web-app
+kubectl run web --image=nginx:1.27-alpine --restart=Never
+kubectl get pod web
+kubectl delete pod web
 ```
-</details>
 
----
+Or declaratively:
 
-## Übung 3: Service erstellen
-
-**Aufgabe:** Erstelle einen ClusterIP-Service namens `web-service`, der auf das Deployment `web-app` (Label `app: web-app`) zeigt und Port 80 freigibt.
-
-<details>
-<summary>Lösung anzeigen</summary>
-
-```bash
-kubectl expose deployment web-app --name=web-service --port=80 --type=ClusterIP
-kubectl get service web-service
-kubectl get endpoints web-service
-```
-</details>
-
----
-
-## Übung 4: ConfigMap erstellen und nutzen
-
-**Aufgabe:** Erstelle eine ConfigMap `app-konfiguration` mit dem Key `FARBE` und Wert `blau`. Starte einen Pod, der diese ConfigMap als Umgebungsvariable nutzt, und überprüfe, ob der Wert korrekt gesetzt ist.
-
-<details>
-<summary>Lösung anzeigen</summary>
-
-```bash
-kubectl create configmap app-konfiguration --from-literal=FARBE=blau
-
-kubectl apply -f - <<EOF
+```yaml
 apiVersion: v1
 kind: Pod
 metadata:
-  name: config-test
+  name: web
 spec:
   containers:
-  - name: test
-    image: busybox:1.36
-    command: ["env"]
-    env:
-    - name: FARBE
-      valueFrom:
-        configMapKeyRef:
-          name: app-konfiguration
-          key: FARBE
-  restartPolicy: Never
-EOF
-
-kubectl logs config-test | grep FARBE
+  - name: web
+    image: nginx:1.27-alpine
 ```
+
+```bash
+kubectl apply -f pod.yaml
+kubectl get pod web
+kubectl delete pod web
+```
+
 </details>
 
 ---
 
-## Übung 5: Namespace erstellen und nutzen
+## Exercise 2 — Deploy and Scale
 
-**Aufgabe:** Erstelle einen Namespace `mein-namespace`. Erstelle darin einen Pod `test-pod` mit dem Image `busybox:1.36`, der den Befehl `sleep 3600` ausführt. Lösche dann alles im Namespace mit einem einzigen Befehl.
+**Task:** Create a Deployment named `app` with image `nginx:1.27-alpine` and 2 replicas. Then scale it to 4 replicas. Verify all 4 Pods are Running.
 
 <details>
-<summary>Lösung anzeigen</summary>
+<summary>Solution</summary>
 
 ```bash
-kubectl create namespace mein-namespace
-kubectl run test-pod --image=busybox:1.36 --command -- sleep 3600 -n mein-namespace
-kubectl get pods -n mein-namespace
-kubectl delete namespace mein-namespace
+kubectl create deployment app --image=nginx:1.27-alpine --replicas=2
+kubectl get pods -l app=app
+
+kubectl scale deployment app --replicas=4
+kubectl get pods -l app=app
+# All 4 should be Running
 ```
+
 </details>
 
 ---
 
-## Übung 6: Pod-Logs und exec
+## Exercise 3 — Rolling Update and Rollback
 
-**Aufgabe:** Starte einen nginx-Pod, exec in ihn hinein und erstelle eine Datei `/tmp/test.txt` mit dem Inhalt "Hallo Kubernetes". Verifiziere die Datei von außen mit `kubectl exec`.
+**Task:** Update the `app` Deployment image to `nginx:1.25-alpine`. Then roll back to the previous version. Verify the image is reverted.
 
 <details>
-<summary>Lösung anzeigen</summary>
+<summary>Solution</summary>
 
 ```bash
-kubectl run nginx-test --image=nginx:1.27-alpine
-kubectl wait pod nginx-test --for=condition=Ready
-kubectl exec -it nginx-test -- sh -c 'echo "Hallo Kubernetes" > /tmp/test.txt'
-kubectl exec nginx-test -- cat /tmp/test.txt
+kubectl set image deployment/app nginx=nginx:1.25-alpine
+kubectl rollout status deployment/app
+kubectl rollout history deployment/app
+
+kubectl rollout undo deployment/app
+kubectl get deployment app -o jsonpath='{.spec.template.spec.containers[0].image}'
+# Should show nginx:1.27-alpine
 ```
+
 </details>
 
 ---
 
-## Übung 7: Rolling Update und Rollback
+## Exercise 4 — Create a Service
 
-**Aufgabe:** Das Deployment `web-app` (aus Übung 2) soll auf das Image `nginx:1.28-alpine` aktualisiert werden. Führe ein Rolling Update durch und beobachte den Status. Führe anschließend einen Rollback durch.
+**Task:** Create a ClusterIP Service named `app-svc` that selects Pods with label `app=app` and exposes port 80. Verify the Endpoints are populated.
 
 <details>
-<summary>Lösung anzeigen</summary>
+<summary>Solution</summary>
 
 ```bash
-kubectl set image deployment/web-app nginx=nginx:1.28-alpine
-kubectl rollout status deployment/web-app
-kubectl rollout history deployment/web-app
-kubectl rollout undo deployment/web-app
-kubectl rollout status deployment/web-app
+kubectl expose deployment app --name=app-svc --port=80 --target-port=80
+kubectl get service app-svc
+kubectl get endpoints app-svc
+# Endpoints should list Pod IPs — not be empty
 ```
+
 </details>
 
 ---
 
-## Aufräumen
+## Exercise 5 — Inject Configuration
+
+**Task:** Create a ConfigMap named `app-config` with key `LOG_LEVEL=info`. Run a Pod that uses this ConfigMap as an environment variable. Verify the value inside the container.
+
+<details>
+<summary>Solution</summary>
 
 ```bash
-kubectl delete deployment web-app
-kubectl delete service web-service
-kubectl delete configmap app-konfiguration
-kubectl delete pod mein-erster-pod nginx-test config-test --ignore-not-found
+kubectl create configmap app-config --from-literal=LOG_LEVEL=info
+
+kubectl run test-pod \
+  --image=nginx:1.27-alpine \
+  --env="LOG_LEVEL_VALUE=$(kubectl get configmap app-config -o jsonpath='{.data.LOG_LEVEL}')" \
+  --restart=Never
 ```
+
+Or with a YAML that references the ConfigMap:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pod
+spec:
+  containers:
+  - name: app
+    image: nginx:1.27-alpine
+    envFrom:
+    - configMapRef:
+        name: app-config
+```
+
+```bash
+kubectl exec test-pod -- env | grep LOG_LEVEL
+# LOG_LEVEL=info
+```
+
+</details>
+
+---
+
+## Exercise 6 — Debug a failing Pod
+
+**Task:** Apply this manifest and diagnose why the Pod is not starting:
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: debug-me
+spec:
+  containers:
+  - name: app
+    image: nginx:does-not-exist
+```
+
+What is the status? What command gives you the most useful information?
+
+<details>
+<summary>Solution</summary>
+
+```bash
+kubectl apply -f debug-pod.yaml
+kubectl get pod debug-me
+# STATUS: ErrImagePull or ImagePullBackOff
+
+kubectl describe pod debug-me
+# Events section: Failed to pull image "nginx:does-not-exist": ... not found
+```
+
+**Fix:** Change the image tag to a valid one, e.g., `nginx:1.27-alpine`.
+
+```bash
+kubectl delete pod debug-me
+# Edit the manifest and apply again
+```
+
+</details>
+
+---
+
+## Exercise 7 — Explore with kubectl
+
+**Task:** Without looking at the module, answer these using kubectl:
+
+1. How many Pods are running in the `kube-system` namespace?
+2. What is the cluster's Kubernetes version?
+3. What node is your `app` Deployment's Pods scheduled on?
+
+<details>
+<summary>Solution</summary>
+
+```bash
+# 1. Pods in kube-system
+kubectl get pods -n kube-system | grep Running | wc -l
+
+# 2. Cluster version
+kubectl version
+
+# 3. Which node
+kubectl get pods -l app=app -o wide
+# NODE column shows the node name
+```
+
+</details>

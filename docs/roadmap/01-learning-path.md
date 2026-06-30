@@ -1,247 +1,196 @@
-# Detaillierter Learning Path
+# Learning Path
 
-## Phase 0: Voraussetzungen & Setup
+## Phase 0 — Prerequisites & Local Setup
 
-**Lernziel:** Dein Rechner ist startklar. Du hast alle Tools installiert und einen funktionierenden lokalen Kubernetes-Cluster.
+**Goal:** A running local Kubernetes cluster. Every lab in this path runs locally.
 
-**Themen:**
-- Linux/macOS Kommandozeilen-Grundlagen
-- Docker oder eine Container-Runtime verstehen
-- kind installieren und konfigurieren
-- kubectl installieren und verstehen
-- YAML-Syntax kennen
+**Topics:**
+- Docker / Podman basics
+- kind (Kubernetes in Docker)
+- kubectl installation and configuration
+- kubeconfig and cluster contexts
 
-**Praktische Aufgaben:**
-- [ ] kind installieren
-- [ ] Ersten Cluster erstellen: `kind create cluster`
-- [ ] `kubectl cluster-info` ausführen und Output verstehen
-- [ ] `kubectl get nodes` ausführen
+**Hands-On:**
+- Install Docker, kind, kubectl, Helm
+- Create a local kind cluster: `kind create cluster --name k8s-learning`
+- Verify: `kubectl get nodes` shows Ready
 
-**Checkpoint:** Du siehst `STATUS: Ready` bei deinem Node.
+**Checkpoint:**
+- [ ] `kind create cluster` runs without errors
+- [ ] `kubectl get nodes` shows the control-plane node as Ready
+- [ ] You can explain what kubeconfig is and where it lives
 
-**Module:** [00 – Voraussetzungen](../modules/00-prerequisites/README.md)  
-**Lab:** [00 – Lokaler Cluster mit kind](../labs/00-local-cluster-kind/README.md)
-
----
-
-## Phase 1: Container & Kubernetes Basics
-
-**Lernziel:** Du verstehst, was Container sind, warum Kubernetes existiert und wie die Architektur aufgebaut ist.
-
-**Themen:**
-- Was ist ein Container? Was ist ein Image?
-- Container-Lebenszyklus
-- Was ist Kubernetes und welche Probleme löst es?
-- Kubernetes-Architektur: Control Plane vs. Data Plane
-- Kernkomponenten: API Server, etcd, Scheduler, Controller Manager, kubelet, kube-proxy
-- Grundlegende Kubernetes-Objekte: Pod, Namespace
-
-**Praktische Aufgaben:**
-- [ ] Container-Image lokal bauen und starten (Docker)
-- [ ] Ersten Pod in Kubernetes erstellen
-- [ ] Pod-Logs ansehen
-- [ ] In einen laufenden Pod "exec" ausführen
-
-**Checkpoint:** Du kannst erklären, was ein Pod ist und was er von einem Container unterscheidet.
-
-**Module:**
-- [01 – Container Basics](../modules/01-container-basics/README.md)
-- [02 – Kubernetes Fundamentals](../modules/02-kubernetes-fundamentals/README.md)
-- [03 – kubectl & Cluster-Zugriff](../modules/03-kubectl-and-cluster-access/README.md)
+**→ Lab 00: Local Cluster with kind**
 
 ---
 
-## Phase 2: Workloads & Networking
+## Phase 1 — Container Basics
 
-**Lernziel:** Du kannst Anwendungen als Deployment deployen und über Services erreichbar machen.
+**Goal:** Understand what containers are and how images work before touching Kubernetes.
 
-**Themen:**
-- Pod vs. Deployment vs. ReplicaSet
-- DaemonSet und StatefulSet (Überblick)
-- Labels und Selectors
-- Services: ClusterIP, NodePort, LoadBalancer
-- kube-proxy und das Kubernetes Netzwerkmodell
-- Ingress und Ingress Controller
+**Topics:**
+- Container images vs. containers
+- Dockerfile basics
+- Docker Hub and container registries
+- Layer caching and image optimization
 
-**Praktische Aufgaben:**
-- [ ] nginx Deployment mit 3 Replicas erstellen
-- [ ] Deployment skalieren (auf 5, zurück auf 1)
-- [ ] Rolling Update durchführen
-- [ ] Service (ClusterIP) erstellen und testen
-- [ ] Service (NodePort) erstellen und lokal aufrufen
-- [ ] Ingress Controller installieren und Route konfigurieren
+**Hands-On:**
+- Run containers with `docker run`
+- Build a custom image from a Dockerfile
+- Push to Docker Hub or GitHub Container Registry
 
-**Checkpoint:** Eine nginx-App ist via Service erreichbar, Deployments laufen mit mehreren Replicas.
-
-**Module:**
-- [04 – Pods & Workloads](../modules/04-pods-and-workloads/README.md)
-- [05 – Services & Networking](../modules/05-services-and-networking/README.md)
-- [06 – Ingress & DNS](../modules/06-ingress-and-dns/README.md)
-
-**Labs:**
-- [01 – nginx Deployment](../labs/01-nginx-deployment/README.md)
-- [02 – Service & Networking](../labs/02-service-networking/README.md)
-- [04 – Ingress](../labs/04-ingress/README.md)
+**Checkpoint:**
+- [ ] You can explain the difference between an image and a container
+- [ ] You can build an image, run it, exec into it, and read its logs
+- [ ] You know what `latest` means and why it is problematic
 
 ---
 
-## Phase 3: Config, Secrets, Storage
+## Phase 2 — Kubernetes Fundamentals
 
-**Lernziel:** Du kannst Konfigurationen und Secrets sicher in Pods einbinden und persistente Daten verwalten.
+**Goal:** Understand the Kubernetes architecture and the declarative model.
 
-**Themen:**
-- ConfigMaps: erstellen, mounten als Datei und Env-Variable
-- Secrets: Base64, Types, sichere Handhabung
-- Environment Variables in Pods
-- PersistentVolumes (PV) und PersistentVolumeClaims (PVC)
+**Topics:**
+- Control plane components (API Server, etcd, Scheduler, Controller Manager)
+- Worker node components (kubelet, kube-proxy, container runtime)
+- Pods as the smallest deployable unit
+- Namespaces
+- Declarative vs. imperative configuration
+
+**Hands-On:**
+- Explore control plane: `kubectl get pods -n kube-system`
+- Create your first Pod declaratively with YAML
+- Understand Pod lifecycle states
+
+**Checkpoint:**
+- [ ] You can name all control plane components and explain their roles
+- [ ] You can explain why declarative configuration is preferred
+- [ ] You know what Pending, Running, and CrashLoopBackOff mean
+
+---
+
+## Phase 3 — Workloads: Pods, Deployments, ReplicaSets
+
+**Goal:** Deploy applications and manage their lifecycle.
+
+**Topics:**
+- Deployment, ReplicaSet, Pod hierarchy
+- Rolling updates and rollback
+- Scaling
+- Resource requests and limits (introduction)
+
+**Hands-On:**
+- Create a Deployment, scale it, perform a rolling update, roll back
+
+**Checkpoint:**
+- [ ] You can explain why you use Deployments instead of Pods directly
+- [ ] You can perform a rolling update and rollback without looking at the docs
+- [ ] You know what `kubectl rollout history` shows
+
+**→ Lab 01: nginx Deployment**
+
+---
+
+## Phase 4 — Networking: Services & Ingress
+
+**Goal:** Make applications reachable inside and outside the cluster.
+
+**Topics:**
+- ClusterIP, NodePort, LoadBalancer Service types
+- Kubernetes DNS and service discovery
+- Endpoints
+- Ingress resources and Ingress Controllers
+- Host-based and path-based routing
+
+**Hands-On:**
+- Create ClusterIP and NodePort Services
+- Test with `kubectl port-forward` and internal DNS
+- Install nginx Ingress Controller and configure host-based routing
+
+**Checkpoint:**
+- [ ] You can explain what happens when a Service has empty Endpoints
+- [ ] You know the DNS name format for a Service
+- [ ] You can explain the difference between Ingress Resource and Ingress Controller
+
+**→ Lab 02: Service & Networking**
+**→ Lab 04: Ingress**
+
+---
+
+## Phase 5 — Configuration & Storage
+
+**Goal:** Decouple configuration from container images and persist data.
+
+**Topics:**
+- ConfigMaps and Secrets
+- Environment variables vs. volume mounts
+- PersistentVolumes, PersistentVolumeClaims
 - StorageClasses
-- Volumes: emptyDir, hostPath, configMap
 
-**Praktische Aufgaben:**
-- [ ] ConfigMap erstellen und als Umgebungsvariable einbinden
-- [ ] ConfigMap als Datei in Pod mounten
-- [ ] Secret erstellen (Opaque Type)
-- [ ] Secret als Env-Variable nutzen
-- [ ] PVC erstellen und an Pod binden
-- [ ] Daten in persistentem Volume speichern und Pod-Neustart überleben lassen
+**Hands-On:**
+- Inject ConfigMap and Secret into a Pod
+- Mount a ConfigMap as files, observe live update behavior
+- Create a PVC and verify data persists across Pod restarts
 
-**Checkpoint:** Eine App liest Konfiguration aus einer ConfigMap und speichert Daten in einem PVC.
+**Checkpoint:**
+- [ ] You can explain when to use env vars vs. volume mounts for ConfigMaps
+- [ ] You know the security considerations for Secrets
+- [ ] You can explain what PVC Pending status means
 
-**Module:**
-- [07 – ConfigMaps, Secrets & Env](../modules/07-configmaps-secrets-and-env/README.md)
-- [08 – Storage](../modules/08-storage/README.md)
-
-**Lab:** [03 – Config & Secrets](../labs/03-config-and-secrets/README.md)
+**→ Lab 03: Config & Secrets**
 
 ---
 
-## Phase 4: Security, RBAC & Troubleshooting
+## Phase 6 — Security, Packaging & Observability
 
-**Lernziel:** Du verstehst Kubernetes-Sicherheitskonzepte, kannst RBAC konfigurieren und Probleme systematisch debuggen.
+**Goal:** Secure workloads, package them with Helm, and observe their health.
 
-**Themen:**
-- RBAC: Roles, ClusterRoles, RoleBindings
-- ServiceAccounts
-- SecurityContext: runAsUser, readOnlyRootFilesystem, privileged
-- Pod Security Standards (PSS)
-- Netzwerkrichtlinien (Überblick)
-- Troubleshooting-Workflow: describe, logs, events
-- Häufige Fehlerzustände: CrashLoopBackOff, ImagePullBackOff, Pending, OOMKilled
+**Topics:**
+- RBAC: Roles, ClusterRoles, RoleBindings, ServiceAccounts
+- SecurityContext
+- Helm: Charts, releases, values, upgrades, rollbacks
+- Kustomize: bases, overlays
+- Health probes: liveness, readiness, startup
+- Metrics Server, kubectl top
+- Logs and Events
 
-**Praktische Aufgaben:**
-- [ ] ServiceAccount erstellen und an Pod binden
-- [ ] Role mit eingeschränkten Rechten erstellen
-- [ ] RoleBinding erstellen
-- [ ] Pod mit eingeschränktem SecurityContext starten
-- [ ] Absichtlich kaputten Pod debuggen
+**Hands-On:**
+- Create a Role, RoleBinding, and verify with `kubectl auth can-i`
+- Install a Helm chart, customize values, upgrade, and rollback
+- Configure probes, simulate probe failure, observe Events
 
-**Checkpoint:** Du kannst einen CrashLoopBackOff-Pod ohne Anleitung diagnostizieren und beheben.
+**Checkpoint:**
+- [ ] You can explain the difference between liveness and readiness probes
+- [ ] You can diagnose a CrashLoopBackOff from logs and events
+- [ ] You can install, upgrade, and roll back a Helm release
 
-**Module:**
-- [09 – RBAC & Security Basics](../modules/09-rbac-and-security-basics/README.md)
-- [12 – Troubleshooting](../modules/12-troubleshooting/README.md)
-
----
-
-## Phase 5: Helm, Kustomize & Observability
-
-**Lernziel:** Du nutzt Helm und Kustomize für strukturierte Deployments und hast ein Grundverständnis von Observability.
-
-**Themen:**
-- Helm: Charts, Values, Releases, Repositories
-- Helm install, upgrade, rollback
-- Eigenes Helm Chart erstellen
-- Kustomize: overlays, bases, patches
-- Metrics: Prometheus & Grafana (Grundlagen)
-- Logs: kubectl logs, stern
-- Events und Monitoring
-
-**Praktische Aufgaben:**
-- [ ] Helm installieren und ersten Chart deployen
-- [ ] Eigenes Helm Chart für eine Beispiel-App erstellen
-- [ ] Kustomize overlay für dev/prod erstellen
-- [ ] Prometheus mit Helm installieren
-- [ ] Grundlegende Metriken in Grafana anzeigen
-
-**Checkpoint:** Eine App wird via Helm Chart deployt, Metriken sind in Prometheus sichtbar.
-
-**Module:**
-- [10 – Helm & Kustomize](../modules/10-helm-and-kustomize/README.md)
-- [11 – Observability](../modules/11-observability/README.md)
-
-**Labs:**
-- [05 – Helm Chart](../labs/05-helm-chart/README.md)
-- [06 – Monitoring](../labs/06-monitoring/README.md)
+**→ Lab 05: Helm Chart**
+**→ Lab 06: Monitoring & Probes**
 
 ---
 
-## Phase 6: GitOps mit Argo CD
+## Phase 7 — GitOps, Production Readiness & Next Steps
 
-**Lernziel:** Du verstehst das GitOps-Prinzip und kannst Argo CD für automatisierte Deployments nutzen.
+**Goal:** Deploy via GitOps, make workloads production-ready, and plan your next steps.
 
-**Themen:**
-- GitOps-Prinzipien (deklarativ, versioniert, automatisiert)
-- Argo CD: Architektur, Application, AppProject
-- App-of-Apps Pattern
-- Sync-Strategien und Health-Checks
-- Unterschied Push-based vs. Pull-based Deployment
+**Topics:**
+- GitOps principles and pull-based deployments
+- Argo CD: Application CRD, sync, self-heal
+- Resource requests and limits
+- HorizontalPodAutoscaler
+- PodDisruptionBudget
+- CKA/CKAD/CKS certification paths
+- Homelab with k3s or kubeadm
+- Operators and CRDs
 
-**Praktische Aufgaben:**
-- [ ] Argo CD in kind-Cluster installieren
-- [ ] Erste Argo CD Application erstellen
-- [ ] Deployment durch Git-Push triggern
-- [ ] Sync-Status und Health in der UI verstehen
+**Hands-On:**
+- Install Argo CD, connect to a Git repository, observe sync
+- Configure HPA and trigger autoscaling
+- Create a PodDisruptionBudget
 
-**Checkpoint:** Eine Änderung im Git-Repository wird automatisch in den Cluster deployed.
+**Checkpoint:**
+- [ ] You can explain the GitOps pull model vs. push-based CI/CD
+- [ ] You can create a production-ready Deployment checklist from memory
+- [ ] You know your concrete next step after completing this path
 
-**Module:** [13 – GitOps mit Argo CD](../modules/13-gitops-with-argocd/README.md)  
-**Lab:** [07 – GitOps mit Argo CD](../labs/07-gitops-argocd/README.md)
-
----
-
-## Phase 7: Production Readiness
-
-**Lernziel:** Du kennst die wichtigsten Konzepte für produktionsreife Kubernetes-Deployments.
-
-**Themen:**
-- Liveness und Readiness Probes
-- Resource Requests und Limits
-- Horizontal Pod Autoscaler (HPA)
-- PodDisruptionBudgets (PDB)
-- Pod Anti-Affinity
-- Taints und Tolerations
-- Node Affinity
-- Kubernetes-Update-Strategie (RollingUpdate, Recreate)
-
-**Praktische Aufgaben:**
-- [ ] Liveness und Readiness Probes konfigurieren
-- [ ] Resource Requests und Limits setzen
-- [ ] HPA erstellen und testen
-- [ ] PodDisruptionBudget definieren
-
-**Checkpoint:** Ein Deployment hat Health Checks, Limits und ist gegen ungewollte Unterbrechungen geschützt.
-
-**Modul:** [14 – Production Readiness](../modules/14-production-readiness/README.md)
-
----
-
-## Phase 8: CKA, Homelab & Real Projects
-
-**Lernziel:** Du wendest alles auf echten oder komplexeren Clustern an und bereitest dich ggf. auf die CKA-Prüfung vor.
-
-**Themen:**
-- CKA Prüfungsinhalte und Vorbereitung
-- Bare-Metal-Cluster mit kubeadm
-- k3s für Homelab
-- Echte Projekte: eigene App von 0 auf Kubernetes
-- Operator-Konzept (Überblick)
-- Custom Resource Definitions (CRD)
-
-**Praktische Aufgaben:**
-- [ ] kubeadm-Cluster aufsetzen (oder k3s)
-- [ ] Eigene containerisierte App komplett deployen
-- [ ] CKA Killer.sh simulieren
-
-**Checkpoint:** Du bist bereit für die CKA-Prüfung oder verwaltest einen echten Cluster.
-
-**Modul:** [15 – Nächste Schritte: CKA & Homelab](../modules/15-next-steps-cka-and-homelab/README.md)
+**→ Lab 07: GitOps with Argo CD**

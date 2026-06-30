@@ -1,335 +1,191 @@
-# Lab 06 – Observability & Health Checks
+# Lab 06 – Monitoring & Probes
 
-## Was du baust
+## What you'll build
 
-Du baust ein Szenario, das zeigt wie Kubernetes Health Checks (Probes) im Alltag funktionieren. Ein Deployment hat Readiness- und Liveness-Proben. Du beobachtest wie Kubernetes auf einen fehlschlagenden Health Check reagiert – und wie du Probleme mit kubectl diagnostizierst.
+An observability setup with Metrics Server, a Pod with configured liveness and readiness probes, and a simulation of a failing probe. You will observe how Kubernetes responds to probe failures and learn to read Events.
 
-**Kubernetes-Objekte:** Deployment, Service, Pod (mit Probes), Metrics Server
+**Kubernetes objects used:** Pod, Service, Deployment (for Metrics Server)
 
-```text
-kubectl top ──► Metrics Server ──► Node/Pod Metriken
-                                           │
-kubectl describe ──► Events ──────────────┤
-                                           │
-kubectl logs ──► Container Logs ──────────┤
-                                           ▼
-                                   Pod: probe-demo
-                                       ├── livenessProbe (GET /)
-                                       └── readinessProbe (GET /)
-                                           │
-Service: probe-svc ──► Endpoints (nur Ready-Pods)
+```
+kubectl top ──► Metrics Server ──► kubelet (on each node)
+                                        │
+                                        └──► Pod metrics (CPU/Memory)
+
+Kubernetes ──► livenessProbe ──► Container (HTTP GET /)
+           ──► readinessProbe ──► Container (HTTP GET /ready)
 ```
 
-## Ziel
+## Goal
 
-Du hast den Metrics Server installiert, `kubectl top` genutzt, eine Readiness Probe absichtlich zum Fehlschlagen gebracht und beobachtet wie Kubernetes den Pod aus den Service-Endpoints entfernt. Diagnose mit `kubectl describe`, `kubectl logs` und `kubectl get events` verstanden.
+Metrics Server running, Pod with probes deployed, and a broken probe scenario diagnosed using `kubectl describe` and Events.
 
-## Voraussetzungen
+## Prerequisites
 
-- [ ] kind-Cluster läuft
-- [ ] kubectl konfiguriert
-- [ ] Helm installiert (für optionalen Prometheus-Teil)
+- [ ] kind cluster running
+- [ ] kubectl configured
 
-## Schritt-für-Schritt
+## Step-by-Step
 
-### Schritt 1: Metrics Server installieren
+### Step 1: Install Metrics Server
 
 ```bash
 kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
-```
 
-Für kind ist ein zusätzlicher Patch nötig (kubelet-TLS umgehen):
-
-```bash
+# Patch for kind (disables TLS verification — only for local clusters)
 kubectl patch deployment metrics-server -n kube-system \
-  --type='json' \
-  -p='[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
+  --type json \
+  -p '[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
 
-# Auf bereit warten
-kubectl rollout status deployment/metrics-server -n kube-system --timeout=90s
+kubectl wait --namespace kube-system \
+  --for=condition=available deployment/metrics-server \
+  --timeout=90s
 ```
 
-Erwartete Ausgabe:
-```text
-deployment "metrics-server" successfully rolled out
-```
+Wait ~60 seconds after the Metrics Server is available before `kubectl top` returns data.
 
-```bash
-# Test – dauert ca. 60s bis erste Metriken sichtbar sind
-kubectl top nodes
-```
-
-Erwartete Ausgabe:
-```text
-NAME                         CPU(cores)   CPU%   MEMORY(bytes)   MEMORY%
-k8s-lernpfad-control-plane   150m         2%     700Mi           18%
-```
-
-### Schritt 2: Test-Workload mit Probes starten
+### Step 2: Deploy a test workload
 
 ```bash
 kubectl apply -f manifests/test-deployment.yaml
-kubectl apply -f manifests/pod-with-probe.yaml
+kubectl get pods -w
 ```
 
-```bash
-kubectl get pods
-```
-
-Erwartete Ausgabe:
+Expected output:
 ```text
-NAME                         READY   STATUS    RESTARTS   AGE
-demo-app-xxxxxxxxx-aaaaa     1/1     Running   0          30s
-demo-app-xxxxxxxxx-bbbbb     1/1     Running   0          30s
-probe-demo                   1/1     Running   0          30s
+NAME                    READY   STATUS    RESTARTS   AGE
+nginx-test-xxx-yyy      1/1     Running   0          30s
 ```
 
-### Schritt 3: Probe-Status beobachten
+### Step 3: Check resource metrics
 
 ```bash
-kubectl describe pod probe-demo
+kubectl top nodes
 ```
 
-Suche im Output nach diesem Abschnitt:
-
+Expected output:
 ```text
-Containers:
-  nginx:
-    ...
-    Liveness:     http-get http://:80/ delay=5s timeout=1s period=10s #success=1 #failure=3
-    Readiness:    http-get http://:80/ delay=3s timeout=1s period=5s  #success=1 #failure=3
+NAME                         CPU(cores)   CPU%   MEMORY(bytes)   MEMORY%
+k8s-learning-control-plane   150m         3%     512Mi           12%
 ```
 
-### Schritt 4: kubectl top für Pods nutzen
-
 ```bash
-# Pod-Ressourcenverbrauch (nach ~60s nach Metrics Server Start)
 kubectl top pods
 ```
 
-Erwartete Ausgabe:
+Expected output:
 ```text
-NAME                         CPU(cores)   MEMORY(bytes)
-demo-app-xxxxxxxxx-aaaaa     1m           3Mi
-demo-app-xxxxxxxxx-bbbbb     1m           3Mi
-probe-demo                   1m           2Mi
+NAME                    CPU(cores)   MEMORY(bytes)
+nginx-test-xxx-yyy      1m           4Mi
 ```
 
-```bash
-# Sortiert nach Memory
-kubectl top pods --sort-by=memory
-```
-
-### Schritt 5: Service erstellen und Endpoints beobachten
+### Step 4: Deploy a Pod with health probes
 
 ```bash
+kubectl apply -f manifests/pod-with-probe.yaml
 kubectl apply -f manifests/probe-service.yaml
-kubectl get service probe-svc
-kubectl get endpoints probe-svc
+kubectl get pod probe-demo
 ```
 
-Erwartete Ausgabe (Pod ist Ready):
+Expected output:
 ```text
-NAME        ENDPOINTS          AGE
-probe-svc   10.244.0.x:80      30s
+NAME         READY   STATUS    RESTARTS   AGE
+probe-demo   1/1     Running   0          15s
 ```
 
-### Schritt 6: Readiness Probe absichtlich zum Fehlschlagen bringen
+Inspect the probe status:
+```bash
+kubectl describe pod probe-demo | grep -A10 "Liveness\|Readiness"
+```
 
-Wir simulieren eine kaputte Readiness Probe, indem wir den nginx-Pod so konfigurieren, dass die Probe auf einen Pfad zeigt, der 404 zurückgibt:
+### Step 5: Simulate a broken probe
+
+Create a Pod with a liveness probe pointing to a non-existent endpoint:
 
 ```bash
-# Direktes Patch des laufenden Pods (Simulation)
-kubectl run broken-pod \
-  --image=nginx:1.27-alpine \
-  --restart=Never \
-  --dry-run=client -o yaml | \
-  kubectl apply -f -
-```
-
-Erstelle alternativ dieses Manifest und wende es an:
-
-```yaml
-# Temporäre Datei: /tmp/broken-probe.yaml
+cat <<EOF | kubectl apply -f -
 apiVersion: v1
 kind: Pod
 metadata:
   name: broken-probe
 spec:
   containers:
-  - name: nginx
+  - name: app
     image: nginx:1.27-alpine
-    readinessProbe:
+    livenessProbe:
       httpGet:
-        path: /dieser-pfad-gibt-404
+        path: /this-does-not-exist
         port: 80
-      initialDelaySeconds: 3
+      initialDelaySeconds: 5
       periodSeconds: 5
-      failureThreshold: 3
-```
-
-```bash
-cat > /tmp/broken-probe.yaml <<'EOF'
-apiVersion: v1
-kind: Pod
-metadata:
-  name: broken-probe
-spec:
-  containers:
-  - name: nginx
-    image: nginx:1.27-alpine
-    readinessProbe:
-      httpGet:
-        path: /dieser-pfad-gibt-404
-        port: 80
-      initialDelaySeconds: 3
-      periodSeconds: 5
-      failureThreshold: 3
+      failureThreshold: 2
 EOF
-
-kubectl apply -f /tmp/broken-probe.yaml
 ```
 
+Wait ~30 seconds, then observe:
 ```bash
-# Beobachten (READY bleibt 0/1!)
 kubectl get pod broken-probe
 ```
 
-Erwartete Ausgabe:
+Expected output (RESTARTS counter increasing):
 ```text
 NAME           READY   STATUS    RESTARTS   AGE
-broken-probe   0/1     Running   0          30s
+broken-probe   1/1     Running   2          60s
 ```
 
-> [!NOTE]
-> Der Pod hat Status `Running` (Container läuft), aber READY zeigt `0/1`. Das bedeutet: der Container lebt, ist aber laut Readiness Probe noch nicht bereit für Traffic.
-
 ```bash
-# Events des Pods prüfen
 kubectl describe pod broken-probe
 ```
 
-Im Events-Abschnitt (Ende der Ausgabe):
-
+Expected output (in Events section):
 ```text
-Events:
-  Type     Reason     Age                From               Message
-  ----     ------     ----               ----               -------
-  Normal   Scheduled  40s                default-scheduler  Successfully assigned default/broken-probe to k8s-lernpfad-control-plane
-  Normal   Pulled     38s                kubelet            Container image "nginx:1.27-alpine" already present on machine
-  Normal   Created    38s                kubelet            Created container nginx
-  Normal   Started    38s                kubelet            Started container nginx
-  Warning  Unhealthy  8s (x4 over 23s)  kubelet            Readiness probe failed: HTTP probe failed with statuscode: 404
+Warning  Unhealthy  Liveness probe failed: HTTP probe failed with statuscode: 404
+Warning  Killing    Container broken-probe failed liveness probe, will be restarted
 ```
 
-### Schritt 7: Events des gesamten Clusters beobachten
+> **Note:** READY shows `1/1` because the container is running — but the liveness probe fails, causing restarts. This is different from readiness failure (which would show `0/1`).
+
+### Step 6: Check Events cluster-wide
 
 ```bash
-kubectl get events --sort-by=.lastTimestamp | tail -20
+kubectl get events --sort-by='.lastTimestamp' | tail -10
 ```
 
-Erwartete Ausgabe (Auszug):
-```text
-LAST SEEN   TYPE      REASON      OBJECT                MESSAGE
-15s         Warning   Unhealthy   pod/broken-probe      Readiness probe failed: HTTP probe failed with statuscode: 404
-```
-
-### Schritt 8: Log-Befehle üben
+## Validation
 
 ```bash
-# Aktuelle Logs eines Pods
-kubectl logs probe-demo
-
-# Logs verfolgen
-kubectl logs probe-demo -f
-
-# Logs der Demo-App (über Label)
-kubectl logs -l app=demo-app --tail=10
-
-# Logs aller Container in allen Namespaces (nur letzten 5 Zeilen)
-kubectl logs -n kube-system -l component=kube-apiserver --tail=5
-```
-
-### Schritt 9 (Optional): Prometheus & Grafana mit Helm
-
-```bash
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-helm repo update
-
-helm install monitoring prometheus-community/kube-prometheus-stack \
-  --namespace monitoring \
-  --create-namespace \
-  --set grafana.adminPassword=lernpfad123 \
-  --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false
-
-kubectl wait --for=condition=available \
-  deployment/monitoring-grafana \
-  -n monitoring \
-  --timeout=120s
-```
-
-```bash
-# Grafana öffnen
-kubectl port-forward -n monitoring svc/monitoring-grafana 3000:80
-# URL: http://localhost:3000 (admin / lernpfad123)
-```
-
-Dashboard "Kubernetes / Compute Resources / Namespace (Pods)" zeigt CPU und Memory aller Pods.
-
-## Validierung
-
-```bash
-# Metrics Server läuft
-kubectl get deployment metrics-server -n kube-system
-```
-
-Erwartete Ausgabe:
-```text
-NAME             READY   UP-TO-DATE   AVAILABLE   AGE
-metrics-server   1/1     1            1           5m
-```
-
-```bash
-# kubectl top funktioniert
+# Metrics Server provides data
 kubectl top nodes
 kubectl top pods
 
-# probe-demo ist Ready (Probes laufen korrekt)
+# Probe-demo is healthy
 kubectl get pod probe-demo
+# READY: 1/1, RESTARTS: 0
 
-# broken-probe ist NICHT Ready (Probe fehlerhaft)
+# Broken probe is restarting
 kubectl get pod broken-probe
-```
-
-Erwartete Ausgabe (beide Pods):
-```text
-NAME           READY   STATUS    RESTARTS   AGE
-broken-probe   0/1     Running   0          3m
-probe-demo     1/1     Running   0          5m
-```
-
-```bash
-# Events zeigen Probe-Fehler
-kubectl get events --sort-by=.lastTimestamp | grep Unhealthy
+# RESTARTS: > 0
 ```
 
 ## Cleanup
 
 ```bash
-# Lab-Ressourcen löschen
 kubectl delete -f manifests/
-kubectl delete pod broken-probe --ignore-not-found
-
-# Falls Prometheus installiert
-helm uninstall monitoring -n monitoring
-kubectl delete namespace monitoring
+kubectl delete pod broken-probe
 ```
 
-> [!NOTE]
-> Der Metrics Server kann im Cluster bleiben – er schadet nicht und ist für spätere Labs (HPA in Modul 14) nützlich.
+## Extension Task
 
-## Erweiterungsaufgabe
+Install the full Prometheus + Grafana monitoring stack using Helm:
 
-1. **OOMKill simulieren:** Starte einen Pod mit sehr niedrigem Memory-Limit (`4Mi`) und einem Prozess, der mehr Memory braucht. Beobachte `kubectl describe pod` und suche nach `OOMKilled`.
-2. **Liveness Probe testen:** Konfiguriere eine Liveness Probe auf `/healthz` (gibt 404 zurück) mit `failureThreshold: 2`. Was passiert nach 2 Fehlschlägen?
-3. **Grafana Dashboard:** Falls Prometheus installiert: Finde das Dashboard "Kubernetes / Compute Resources / Namespace (Pods)" und lese CPU- und Memory-Verbrauch für den `default` Namespace ab.
+```bash
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
+helm install monitoring prometheus-community/kube-prometheus-stack \
+  --namespace monitoring --create-namespace \
+  --set grafana.adminPassword=admin
+
+kubectl port-forward -n monitoring service/monitoring-grafana 3000:80
+# Open http://localhost:3000 (admin/admin)
+```
+
+Explore the built-in Kubernetes dashboards in Grafana.

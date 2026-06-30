@@ -1,55 +1,51 @@
-# Lab 07 – GitOps mit Argo CD
+# Lab 07 – GitOps with Argo CD
 
-## Was du baust
+## What you'll build
 
-Du installierst Argo CD in deinem kind-Cluster und verbindest es mit einem Git-Repository. Argo CD beobachtet das Repository und hält den Cluster automatisch synchron. Änderungen im Git werden ohne manuellen `kubectl apply` in den Cluster deployed.
+A GitOps deployment pipeline: Argo CD installed in your cluster, connected to a Git repository, deploying an Application automatically and keeping it in sync. You will observe Argo CD reconcile a manually deleted resource.
 
-**Kubernetes-Objekte:** Argo CD Application, Argo CD Namespace, Deployment (durch Argo CD), Pods
+**Kubernetes objects used:** Namespace (argocd), Deployment, Service, Application (Argo CD CRD)
 
-```text
-Git Repository
-      │  (Argo CD pollt alle 3 Minuten)
-      ▼
-Argo CD Application (argocd Namespace)
-      │  (sync: kubectl apply im Hintergrund)
-      ▼
-Deployment: gitops-nginx (default Namespace)
-      └── Pod (nginx)
-          Pod (nginx)
+```
+Git Repository (your manifests)
+        │
+        │  Argo CD watches and pulls
+        ▼
+Argo CD Controller (in cluster)
+        │
+        │  applies manifests
+        ▼
+Namespace: default
+  ├── Deployment (my-app)
+  └── Service (my-app)
 ```
 
-## Ziel
+## Goal
 
-Argo CD läuft im Cluster. Eine Application synchronisiert ein Git-Repository. Eine Änderung im Git (z.B. `replicas: 3`) wird automatisch in den Cluster deployed.
+Argo CD running, an Application deployed and showing `Synced/Healthy`, and self-heal observed when a resource is manually deleted.
 
-## Voraussetzungen
+## Prerequisites
 
-- [ ] kind-Cluster läuft
-- [ ] kubectl konfiguriert
-- [ ] Eigenes Git-Repository vorhanden (GitHub, GitLab, etc.)
-- [ ] Git-Zugang für Argo CD (öffentliches Repo: kein Token nötig)
+- [ ] kind cluster running
+- [ ] kubectl configured
+- [ ] A public Git repository with Kubernetes manifests (or use the examples in this repo)
 
-## Schritt-für-Schritt
+## Step-by-Step
 
-### Schritt 1: Argo CD installieren
+### Step 1: Install Argo CD
 
 ```bash
 kubectl create namespace argocd
 
-kubectl apply -n argocd -f \
-  https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl apply -n argocd \
+  -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+kubectl wait --namespace argocd \
+  --for=condition=available deployment/argocd-server \
+  --timeout=120s
 ```
 
-Warten bis Argo CD bereit ist:
-
-```bash
-kubectl wait --for=condition=available \
-  deployment/argocd-server \
-  -n argocd \
-  --timeout=180s
-```
-
-Erwartete Ausgabe:
+Expected output:
 ```text
 deployment.apps/argocd-server condition met
 ```
@@ -58,193 +54,115 @@ deployment.apps/argocd-server condition met
 kubectl get pods -n argocd
 ```
 
-Erwartete Ausgabe:
+Expected output (all Running):
 ```text
-NAME                                                READY   STATUS    RESTARTS   AGE
-argocd-application-controller-0                     1/1     Running   0          2m
-argocd-applicationset-controller-xxxxxxxxx-xxxxx    1/1     Running   0          2m
-argocd-dex-server-xxxxxxxxx-xxxxx                   1/1     Running   0          2m
-argocd-notifications-controller-xxxxxxxxx-xxxxx     1/1     Running   0          2m
-argocd-redis-xxxxxxxxx-xxxxx                        1/1     Running   0          2m
-argocd-repo-server-xxxxxxxxx-xxxxx                  1/1     Running   0          2m
-argocd-server-xxxxxxxxx-xxxxx                       1/1     Running   0          2m
+NAME                                  READY   STATUS    RESTARTS   AGE
+argocd-application-controller-...    1/1     Running   0          90s
+argocd-dex-server-...                1/1     Running   0          90s
+argocd-redis-...                     1/1     Running   0          90s
+argocd-repo-server-...               1/1     Running   0          90s
+argocd-server-...                    1/1     Running   0          90s
 ```
 
-### Schritt 2: Argo CD UI aufrufen
+### Step 2: Access the Argo CD UI
 
 ```bash
-# Admin-Passwort abrufen
-ARGOCD_PW=$(kubectl -n argocd get secret argocd-initial-admin-secret \
-  -o jsonpath="{.data.password}" | base64 -d)
-echo "Passwort: $ARGOCD_PW"
-
-# UI-Port weiterleiten
-kubectl port-forward svc/argocd-server -n argocd 8080:443 &
+kubectl port-forward -n argocd service/argocd-server 8080:443
 ```
 
-Öffne im Browser: **https://localhost:8080**
-Zertifikats-Warnung ignorieren (lokaler Test). Login: `admin` / Passwort von oben.
+Open [https://localhost:8080](https://localhost:8080) (accept the self-signed certificate warning).
 
-### Schritt 3: Argo CD CLI installieren (optional, empfohlen)
-
+Get the initial admin password:
 ```bash
-# macOS
-brew install argocd
-
-# Login
-argocd login localhost:8080 --insecure \
-  --username admin \
-  --password "$ARGOCD_PW"
+kubectl get secret argocd-initial-admin-secret -n argocd \
+  -o jsonpath='{.data.password}' | base64 -d && echo
 ```
 
-Erwartete Ausgabe:
-```text
-'admin:login' logged in successfully
-```
+Log in: username `admin`, password from above.
 
-### Schritt 4: Git-Repository mit Manifest vorbereiten
+### Step 3: Create an Application
 
-Lege in deinem eigenen Git-Repository diese Struktur an:
-
-```
-k8s/
-└── nginx-deployment.yaml
-```
-
-Inhalt von `k8s/nginx-deployment.yaml`:
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: gitops-nginx
-spec:
-  replicas: 2
-  selector:
-    matchLabels:
-      app: gitops-nginx
-  template:
-    metadata:
-      labels:
-        app: gitops-nginx
-    spec:
-      containers:
-      - name: nginx
-        image: nginx:1.27-alpine
-        ports:
-        - containerPort: 80
-```
-
-Pushe die Datei:
-```bash
-git add k8s/nginx-deployment.yaml
-git commit -m "add: initial nginx deployment for gitops demo"
-git push
-```
-
-### Schritt 5: Argo CD Application erstellen
-
-Passe in `manifests/argocd-application.yaml` die `repoURL` auf dein Repository an, dann:
+Edit `manifests/argocd-application.yaml` and replace `repoURL` with your Git repository URL.
 
 ```bash
 kubectl apply -f manifests/argocd-application.yaml
 ```
 
-Erwartete Ausgabe:
-```text
-application.argoproj.io/gitops-demo created
-```
-
+Check the Application status:
 ```bash
-# Status prüfen
 kubectl get application -n argocd
 ```
 
-Erwartete Ausgabe:
+Expected output:
 ```text
-NAME          SYNC STATUS   HEALTH STATUS
-gitops-demo   Synced        Healthy
+NAME     SYNC STATUS   HEALTH STATUS
+my-app   Synced        Healthy
 ```
 
-### Schritt 6: GitOps-Workflow erleben
-
-Ändere in deinem Git-Repository `replicas: 2` auf `replicas: 3` und pushe:
+### Step 4: Trigger a sync manually
 
 ```bash
-# Im eigenen Repo:
-# replicas: 3 setzen, dann:
-git commit -am "update: scale nginx to 3 replicas"
-git push
+# Install argocd CLI (optional)
+brew install argocd
+
+argocd login localhost:8080 --username admin --password <password> --insecure
+argocd app sync my-app
 ```
 
-Argo CD synchronisiert nach ca. 3 Minuten automatisch. Oder sofort manuell:
-
-```bash
-argocd app sync gitops-demo
-```
-
-Erwartete Ausgabe:
+Expected output:
 ```text
-TIMESTAMP  GROUP  KIND        NAMESPACE  NAME          STATUS  HEALTH   HOOK  MESSAGE
-...        apps   Deployment  default    gitops-nginx  Synced  Healthy        deployment.apps/gitops-nginx configured
+TIMESTAMP   GROUP  KIND        NAMESPACE  NAME    STATUS   HEALTH    HOOK  MESSAGE
+...         apps   Deployment  default    my-app  Synced   Healthy         deployment.apps/my-app configured
 ```
+
+### Step 5: Observe self-healing
+
+With `selfHeal: true` configured, delete a resource manually:
 
 ```bash
-# Pods prüfen – jetzt 3 statt 2
-kubectl get pods -l app=gitops-nginx
+kubectl delete deployment my-app
+
+# Watch Argo CD recreate it within seconds
+kubectl get deployment my-app -w
 ```
 
-Erwartete Ausgabe:
+Expected output (deployment reappears quickly):
 ```text
-NAME                            READY   STATUS    RESTARTS   AGE
-gitops-nginx-xxxxxxxxx-aaaaa    1/1     Running   0          2m
-gitops-nginx-xxxxxxxxx-bbbbb    1/1     Running   0          2m
-gitops-nginx-xxxxxxxxx-ccccc    1/1     Running   0          20s
+NAME     READY   UP-TO-DATE   AVAILABLE   AGE
+my-app   0/3     0            0           2s
+my-app   3/3     3            3           15s
 ```
 
-> [!TIP]
-> Teste Self-Heal: Lösche manuell das Deployment (`kubectl delete deployment gitops-nginx`). Argo CD erkennt die Abweichung und stellt es automatisch wieder her.
+> **Tip:** Try changing the replica count directly with `kubectl scale` and observe Argo CD reset it back to the value in Git.
 
-## Validierung
+### Step 6: Change the replica count via Git
+
+Update the replica count in your Git repository (edit the Deployment manifest and push). Watch Argo CD detect the change and apply it:
 
 ```bash
-# Application-Übersicht
+kubectl get deployment my-app -w
+# replica count changes to match the new value in Git
+```
+
+## Validation
+
+```bash
 kubectl get application -n argocd
+# SYNC STATUS: Synced, HEALTH STATUS: Healthy
 
-# Sync-Historie
-argocd app history gitops-demo
-
-# Deployed Pods
-kubectl get pods -l app=gitops-nginx
-kubectl get deployment gitops-nginx
-```
-
-```bash
-# Argo CD Server-Logs (für Debugging)
-kubectl logs -n argocd deployment/argocd-server --tail=20
+kubectl get pods -n argocd
+# All Running
 ```
 
 ## Cleanup
 
 ```bash
-# Argo CD Application löschen
 kubectl delete -f manifests/argocd-application.yaml
-
-# Durch Argo CD erstelltes Deployment löschen
-kubectl delete deployment gitops-nginx --ignore-not-found
-
-# Argo CD Namespace löschen
 kubectl delete namespace argocd
-
-# Port-Forward beenden
-kill %1 2>/dev/null
 ```
 
-> [!CAUTION]
-> `kubectl delete namespace argocd` löscht Argo CD vollständig inklusive aller konfigurierten Applications und Credentials. Nur ausführen, wenn das beabsichtigt ist.
+> **Caution:** `kubectl delete namespace argocd` deletes all Argo CD resources and configuration permanently.
 
-## Erweiterungsaufgabe
+## Extension Task
 
-1. **Self-Heal testen:** Lösche das Deployment manuell und beobachte, wie Argo CD es innerhalb von Sekunden wiederherstellt (Auto-Sync und selfHeal müssen aktiv sein).
-2. **Zweite Application:** Erstelle eine Application, die auf einen anderen Pfad im selben Repo zeigt (z.B. `k8s-v2/`).
-3. **App-of-Apps Pattern:** Erstelle eine Root-Application, die im Repo andere Application-Manifeste enthält und verwaltet.
+Configure Argo CD notifications to send a Slack message when an Application sync fails. See [Argo CD Notifications](https://argo-cd.readthedocs.io/en/stable/operator-manual/notifications/) for setup instructions.

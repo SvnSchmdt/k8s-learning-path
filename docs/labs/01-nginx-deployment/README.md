@@ -1,213 +1,156 @@
-# Lab 01 – nginx Deployment ausrollen
+# Lab 01 – nginx Deployment
 
-## Was du baust
+## What you'll build
 
-Du rollst eine nginx-Webanwendung als Kubernetes-Deployment mit 3 Replicas aus. Du lernst, wie Deployments erstellt, skaliert, aktualisiert und zurückgerollt werden.
+A production-style nginx Deployment with 3 replicas, managed by a ReplicaSet. You will scale it, perform a rolling update, inspect rollout history, and roll back to the previous version.
 
-**Kubernetes-Objekte:** Deployment, ReplicaSet, Pods
+**Kubernetes objects used:** Deployment, ReplicaSet, Pod
 
-```text
-Deployment (nginx-deployment)
-    │
-    └── ReplicaSet
-          ├── Pod (nginx:1.27-alpine)
-          ├── Pod (nginx:1.27-alpine)
-          └── Pod (nginx:1.27-alpine)
+```
+Deployment (nginx)
+  └── ReplicaSet (current)
+        ├── Pod (nginx-xxx-1)
+        ├── Pod (nginx-xxx-2)
+        └── Pod (nginx-xxx-3)
+  └── ReplicaSet (previous, replicas=0)
 ```
 
-## Ziel
+## Goal
 
-Ein nginx-Deployment mit 3 Replicas läuft. Du hast ein Rolling Update und einen Rollback erfolgreich durchgeführt.
+Deploy nginx with 3 replicas, scale to 5, perform a rolling update, and roll back — verifying the state after each step.
 
-## Voraussetzungen
+## Prerequisites
 
-- [ ] kind-Cluster läuft (`kubectl get nodes` zeigt Ready)
-- [ ] kubectl konfiguriert (`kubectl config current-context` zeigt `kind-k8s-lernpfad`)
+- [ ] kind cluster running (`kubectl get nodes` shows Ready)
+- [ ] kubectl configured
 
-## Schritt-für-Schritt
+## Step-by-Step
 
-### Schritt 1: Deployment anlegen
+### Step 1: Apply the Deployment manifest
 
 ```bash
 kubectl apply -f manifests/deployment.yaml
 ```
 
-Erwartete Ausgabe:
+Expected output:
 ```text
-deployment.apps/nginx-deployment created
+deployment.apps/nginx created
 ```
-
-### Schritt 2: Deployment-Status prüfen
 
 ```bash
 kubectl get deployments
 ```
 
-Erwartete Ausgabe:
+Expected output:
 ```text
-NAME               READY   UP-TO-DATE   AVAILABLE   AGE
-nginx-deployment   3/3     3            3           30s
+NAME    READY   UP-TO-DATE   AVAILABLE   AGE
+nginx   3/3     3            3           20s
+```
+
+### Step 2: Inspect the Pod hierarchy
+
+```bash
+kubectl get pods -l app=nginx
+```
+
+Expected output:
+```text
+NAME                     READY   STATUS    RESTARTS   AGE
+nginx-6d4cf56db6-2kxvp   1/1     Running   0          30s
+nginx-6d4cf56db6-8lmnz   1/1     Running   0          30s
+nginx-6d4cf56db6-qtxfp   1/1     Running   0          30s
 ```
 
 ```bash
-kubectl get pods
-```
-
-Erwartete Ausgabe:
-```text
-NAME                                READY   STATUS    RESTARTS   AGE
-nginx-deployment-6d4cf56db6-abcde   1/1     Running   0          30s
-nginx-deployment-6d4cf56db6-fghij   1/1     Running   0          30s
-nginx-deployment-6d4cf56db6-klmno   1/1     Running   0          30s
-```
-
-```bash
-# Zugehöriges ReplicaSet anzeigen
 kubectl get replicasets
 ```
 
-### Schritt 3: Deployment skalieren
+### Step 3: Scale to 5 replicas
 
 ```bash
-# Auf 5 Replicas skalieren
-kubectl scale deployment nginx-deployment --replicas=5
+kubectl scale deployment nginx --replicas=5
 kubectl get pods -w
 ```
 
-Im Watch-Modus siehst du wie neue Pods von `Pending` → `ContainerCreating` → `Running` wechseln. Beende mit `Ctrl+C`.
-
-```bash
-# Wieder reduzieren
-kubectl scale deployment nginx-deployment --replicas=3
-kubectl get pods
-```
-
-Erwartete Ausgabe (nach Skalierung auf 3):
+Expected output (watch mode):
 ```text
-NAME                                READY   STATUS    RESTARTS   AGE
-nginx-deployment-6d4cf56db6-abcde   1/1     Running   0          2m
-nginx-deployment-6d4cf56db6-fghij   1/1     Running   0          2m
-nginx-deployment-6d4cf56db6-klmno   1/1     Running   0          2m
+NAME                     READY   STATUS    RESTARTS   AGE
+nginx-6d4cf56db6-2kxvp   1/1     Running   0          2m
+nginx-6d4cf56db6-8lmnz   1/1     Running   0          2m
+nginx-6d4cf56db6-qtxfp   1/1     Running   0          2m
+nginx-6d4cf56db6-abcde   0/1     Pending   0          1s
+nginx-6d4cf56db6-fghij   0/1     Pending   0          1s
 ```
 
-### Schritt 4: In einen Pod exec'en
+Press `Ctrl+C` to exit watch mode.
+
+### Step 4: Perform a rolling update
 
 ```bash
-# Pod-Name automatisch ermitteln
-POD=$(kubectl get pods -l app=nginx -o jsonpath='{.items[0].metadata.name}')
-echo "Pod: $POD"
-
-# Shell im Pod öffnen
-kubectl exec -it $POD -- sh
+kubectl set image deployment/nginx nginx=nginx:1.27-alpine
+kubectl rollout status deployment/nginx
 ```
 
-Im Pod:
-```sh
-# nginx-Version prüfen
-nginx -v
-# nginx version: nginx/1.27.x
-
-# nginx-Konfiguration ansehen
-cat /etc/nginx/nginx.conf
-
-exit
-```
-
-### Schritt 5: Rolling Update durchführen
-
-```bash
-# Image-Version aktualisieren
-kubectl set image deployment/nginx-deployment nginx=nginx:1.28-alpine
-
-# Update-Fortschritt beobachten
-kubectl rollout status deployment/nginx-deployment
-```
-
-Erwartete Ausgabe:
+Expected output:
 ```text
-Waiting for deployment "nginx-deployment" rollout to finish: 1 out of 3 new replicas have been updated...
-Waiting for deployment "nginx-deployment" rollout to finish: 2 out of 3 new replicas have been updated...
-Waiting for deployment "nginx-deployment" rollout to finish: 1 old replicas are pending termination...
-deployment "nginx-deployment" successfully rolled out
+Waiting for deployment "nginx" rollout to finish: 1 out of 5 new replicas have been updated...
+...
+deployment "nginx" successfully rolled out
 ```
+
+### Step 5: Inspect rollout history
 
 ```bash
-# Update-Historie
-kubectl rollout history deployment/nginx-deployment
+kubectl rollout history deployment/nginx
 ```
 
-Erwartete Ausgabe:
+Expected output:
 ```text
 REVISION  CHANGE-CAUSE
 1         <none>
 2         <none>
 ```
 
-### Schritt 6: Rollback durchführen
+### Step 6: Roll back to the previous version
 
 ```bash
-# Zur vorherigen Version zurück
-kubectl rollout undo deployment/nginx-deployment
-kubectl rollout status deployment/nginx-deployment
+kubectl rollout undo deployment/nginx
+kubectl rollout status deployment/nginx
 ```
 
-Erwartete Ausgabe:
-```text
-deployment "nginx-deployment" successfully rolled out
-```
+Verify the image was reverted:
 
 ```bash
-# Aktuelle Image-Version prüfen
-kubectl get deployment nginx-deployment \
-  -o jsonpath='{.spec.template.spec.containers[0].image}'
+kubectl get deployment nginx -o jsonpath='{.spec.template.spec.containers[0].image}'
 ```
 
-Erwartete Ausgabe:
-```text
-nginx:1.27-alpine
-```
-
-## Validierung
+## Validation
 
 ```bash
-# Alle 3 Pods laufen
-kubectl get pods -l app=nginx
+kubectl get deployment nginx
+# READY should show 5/5
 
-# Deployment ist vollständig deployed
-kubectl get deployment nginx-deployment
-
-# Details des Deployments
-kubectl describe deployment nginx-deployment | grep -E "Image:|Replicas:|RollingUpdate"
-```
-
-Erwartete Ausgabe (Auszug):
-```text
-Replicas:               3 desired | 3 updated | 3 total | 3 available | 0 unavailable
-RollingUpdateStrategy:  25% max unavailable, 25% max surge
-Image:      nginx:1.27-alpine
-```
-
-```bash
-# Logs aller nginx-Pods (letzte 5 Zeilen)
-kubectl logs -l app=nginx --tail=5
+kubectl describe deployment nginx | grep Image
+# Should show the original image
 ```
 
 ## Cleanup
 
 ```bash
-kubectl delete -f manifests/
+kubectl delete -f manifests/deployment.yaml
 ```
 
-Erwartete Ausgabe:
-```text
-deployment.apps "nginx-deployment" deleted
+## Extension Task
+
+Configure a rolling update strategy with controlled rollout speed:
+
+```yaml
+spec:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1        # max extra pods during update
+      maxUnavailable: 0  # never have fewer than desired replicas
 ```
 
-> [!NOTE]
-> Das Deployment wird in Lab 02 (Service & Networking) wiederverwendet. Falls du direkt weitermachst, kannst du den Cleanup überspringen und das Deployment laufen lassen.
-
-## Erweiterungsaufgabe
-
-1. Füge dem Deployment eine Liveness-Probe hinzu, die `GET /` auf Port 80 prüft.
-2. Setze `resources.requests` und `resources.limits` (Richtwerte: `memory: "32Mi"`, `cpu: "50m"`).
-3. Aktualisiere auf ein nicht-existierendes Image (`nginx:gibts-nicht`) und beobachte was passiert. Führe dann einen Rollback durch.
+Apply it and observe the difference in how the update progresses.

@@ -1,33 +1,33 @@
-# Modul 08 – Storage
+# Module 08 – Storage
 
-## Ziel des Moduls
+## Goal
 
-Nach diesem Modul verstehst du, wie Kubernetes persistenten Storage verwaltet. Du kannst PersistentVolumes, PersistentVolumeClaims und StorageClasses erstellen und in Pods verwenden.
+After this module you understand how Kubernetes manages persistent storage. You can create PersistentVolumes, PersistentVolumeClaims, and StorageClasses, and use them in Pods.
 
-## Warum ist das wichtig?
+## Why does this matter?
 
-Pods sind kurzlebig – wenn ein Pod stirbt, sind alle lokalen Daten weg. Für Anwendungen, die Daten persistieren müssen (Datenbanken, File-Uploads, etc.), braucht man persistenten Storage, der unabhängig vom Pod-Lebenszyklus existiert.
+Pods are ephemeral — when a Pod dies, all local data is gone. For applications that need to persist data (databases, file uploads, etc.), you need persistent storage that exists independently of the Pod lifecycle.
 
-## Kernkonzepte
+## Key Concepts
 
-- **Volume:** Temporärer oder persistenter Speicher, der in einen Pod eingehängt wird. Lebt so lange wie der Pod (bei emptyDir) oder länger (bei PV).
-- **PersistentVolume (PV):** Eine Storage-Ressource im Cluster, die von einem Administrator (oder dynamisch durch eine StorageClass) bereitgestellt wird. Existiert unabhängig von Pods.
-- **PersistentVolumeClaim (PVC):** Eine Anforderung für Storage durch einen Pod. Der PVC wird an ein passendes PV gebunden.
-- **StorageClass:** Definiert, wie Storage dynamisch bereitgestellt wird (provisioner, Parameter). Mit StorageClasses musst du keine PVs manuell erstellen.
-- **AccessModes:** Wie der Storage verwendet werden kann – ReadWriteOnce (RWO), ReadOnlyMany (ROX), ReadWriteMany (RWX).
+- **Volume:** Temporary or persistent storage mounted into a Pod. Lifetime depends on the volume type.
+- **PersistentVolume (PV):** A storage resource in the cluster, provisioned by an admin or dynamically by a StorageClass. Exists independently of Pods.
+- **PersistentVolumeClaim (PVC):** A request for storage by a Pod. The PVC is bound to a matching PV.
+- **StorageClass:** Defines how storage is dynamically provisioned (provisioner, parameters). With StorageClasses, you don't create PVs manually.
+- **AccessModes:** How storage can be used — ReadWriteOnce (RWO), ReadOnlyMany (ROX), ReadWriteMany (RWX).
 
-## Storage-Typen im Überblick
+## Storage Types
 
-| Typ | Lebensdauer | Verwendung |
-|-----|-------------|-----------|
-| `emptyDir` | Pod-Lebensdauer | Temporärer Shared-Storage zwischen Containern |
-| `hostPath` | Node-Lebensdauer | Test/Dev, nicht für Produktion |
-| `configMap`/`secret` | Konfigurationsdaten als Dateien | Konfiguration |
-| `PersistentVolumeClaim` | Unabhängig vom Pod | Produktive persistente Daten |
+| Type | Lifetime | Use case |
+|------|----------|----------|
+| `emptyDir` | Pod lifetime | Temporary shared storage between containers |
+| `hostPath` | Node lifetime | Testing/dev only, not for production |
+| `configMap`/`secret` | Config-driven | Configuration as files |
+| `PersistentVolumeClaim` | Independent of Pod | Production persistent data |
 
-## Praxisaufgabe
+## Hands-On Task
 
-### emptyDir (temporär, für Tests)
+### emptyDir (temporary, for testing)
 
 ```yaml
 spec:
@@ -39,98 +39,81 @@ spec:
     image: nginx:1.27-alpine
     volumeMounts:
     - name: tmp-storage
-      mountPath: /tmp/daten
+      mountPath: /tmp/data
 ```
 
-### PVC erstellen und verwenden
+### Create and use a PVC
 
 ```yaml
 # pvc.yaml
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: meine-daten
+  name: my-data
 spec:
   accessModes:
   - ReadWriteOnce
   resources:
     requests:
       storage: 1Gi
-  # storageClassName: standard  # In kind vorhanden
+  # storageClassName: standard  # available in kind
 ```
 
 ```bash
 kubectl apply -f pvc.yaml
 kubectl get pvc
-kubectl describe pvc meine-daten
+kubectl describe pvc my-data
 ```
 
-PVC in einem Pod verwenden:
+Use the PVC in a Pod:
 
 ```yaml
 spec:
   volumes:
-  - name: daten-volume
+  - name: data-volume
     persistentVolumeClaim:
-      claimName: meine-daten
+      claimName: my-data
   containers:
   - name: app
     image: nginx:1.27-alpine
     volumeMounts:
-    - name: daten-volume
-      mountPath: /var/daten
+    - name: data-volume
+      mountPath: /var/data
 ```
 
-### StorageClasses anzeigen
+### View StorageClasses
 
 ```bash
 kubectl get storageclass
-kubectl describe storageclass standard  # kind's Default-StorageClass
+kubectl describe storageclass standard   # kind's default StorageClass
 ```
 
-## Beispiel-Kommandos
+## Common Mistakes
 
-```bash
-# PVCs anzeigen
-kubectl get pvc
-
-# PVs anzeigen
-kubectl get pv
-
-# StorageClasses anzeigen
-kubectl get sc
-
-# PVC löschen (PV bleibt erhalten, abhängig von ReclaimPolicy)
-kubectl delete pvc meine-daten
-```
-
-## Typische Fehler
-
-- **PVC bleibt `Pending`:** Kein passendes PV vorhanden oder StorageClass nicht konfiguriert. `kubectl describe pvc` zeigt den Grund.
-- **ReadWriteMany nicht unterstützt:** Die meisten einfachen StorageClasses (hostPath, local) unterstützen nur ReadWriteOnce. Für RWX braucht man NFS oder Cloud-Storage.
-- **Daten verloren nach Pod-Neustart:** Der Pod nutzt `emptyDir` statt PVC. emptyDir lebt nur so lange wie der Pod.
-- **PV nicht freigegeben:** ReclaimPolicy `Retain` bedeutet, das PV bleibt nach PVC-Löschung erhalten und muss manuell bereinigt werden.
+- **PVC stays Pending:** No matching PV or StorageClass not configured. `kubectl describe pvc` shows the reason.
+- **ReadWriteMany not supported:** Most simple StorageClasses (hostPath, local) only support ReadWriteOnce. For RWX you need NFS or cloud storage.
+- **Data lost after Pod restart:** The Pod uses `emptyDir` instead of a PVC. emptyDir only lives as long as the Pod.
+- **PV not released:** ReclaimPolicy `Retain` means the PV remains after PVC deletion and must be manually cleaned up.
 
 ## Checkpoint
 
-Du hast das Modul verstanden, wenn du folgende Fragen beantworten kannst:
-- [ ] Was ist der Unterschied zwischen `emptyDir` und einem PersistentVolumeClaim?
-- [ ] Was ist der Unterschied zwischen PV und PVC?
-- [ ] Was macht eine StorageClass?
-- [ ] Was passiert mit den Daten in einem PVC, wenn der Pod neu gestartet wird?
-- [ ] Was bedeutet `accessMode: ReadWriteOnce`?
+- [ ] What is the difference between `emptyDir` and a PersistentVolumeClaim?
+- [ ] What is the difference between a PV and a PVC?
+- [ ] What does a StorageClass do?
+- [ ] What happens to the data in a PVC when the Pod is restarted?
+- [ ] What does `accessMode: ReadWriteOnce` mean?
 
 ## Definition of Done
 
-Du bist mit diesem Modul fertig, wenn du:
+You are done with this module when you:
 
-- [ ] den Unterschied zwischen emptyDir und PersistentVolumeClaim erklären kannst
-- [ ] einen PVC erstellt und an einen Pod gebunden hast
-- [ ] Daten in den PVC geschrieben, den Pod gelöscht und nach Neustart noch gefunden hast
-- [ ] weißt was eine StorageClass macht
-- [ ] alle Checkpoint-Fragen beantworten kannst
+- [ ] Can explain the difference between emptyDir and a PersistentVolumeClaim
+- [ ] Have created a PVC and bound it to a Pod
+- [ ] Have written data to the PVC, deleted the Pod, and found the data after restart
+- [ ] Can explain what a StorageClass does
+- [ ] Can answer all checkpoint questions
 
-## Weiterführende Links
+## Further Reading
 
 - [Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/)
 - [Storage Classes](https://kubernetes.io/docs/concepts/storage/storage-classes/)

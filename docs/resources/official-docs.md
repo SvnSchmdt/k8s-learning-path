@@ -1,113 +1,81 @@
-# Offizielle Dokumentation & Ressourcen
+# Official Documentation & Resources
 
-Alle verlinkten Ressourcen sind offizielle oder hochwertige Community-Quellen.
+All technical content in this learning path is based on official sources. When in doubt, these are the authoritative references.
 
 ---
 
-## Kubernetes (Primärquelle)
+## Kubernetes
 
-| Ressource | URL |
-|-----------|-----|
-| Kubernetes Hauptseite | https://kubernetes.io |
-| Offizielle Dokumentation | https://kubernetes.io/docs/home/ |
-| Konzepte | https://kubernetes.io/docs/concepts/ |
-| Aufgaben (Tasks) | https://kubernetes.io/docs/tasks/ |
-| Referenz (API, kubectl) | https://kubernetes.io/docs/reference/ |
-| Tutorials | https://kubernetes.io/docs/tutorials/ |
-| kubectl Quick Reference | https://kubernetes.io/docs/reference/kubectl/quick-reference/ |
+| Resource | URL |
+|----------|-----|
+| Official Documentation | https://kubernetes.io/docs/ |
+| Concepts | https://kubernetes.io/docs/concepts/ |
+| Tasks | https://kubernetes.io/docs/tasks/ |
 | API Reference | https://kubernetes.io/docs/reference/kubernetes-api/ |
+| kubectl Reference | https://kubernetes.io/docs/reference/kubectl/ |
+| kubectl Quick Reference | https://kubernetes.io/docs/reference/kubectl/quick-reference/ |
 
 ---
 
-## Wichtige Kubernetes-Konzepte (direkte Links)
+## CNCF
 
-| Thema | Link |
-|-------|------|
-| Pods | https://kubernetes.io/docs/concepts/workloads/pods/ |
-| Deployments | https://kubernetes.io/docs/concepts/workloads/controllers/deployment/ |
-| Services | https://kubernetes.io/docs/concepts/services-networking/service/ |
-| Ingress | https://kubernetes.io/docs/concepts/services-networking/ingress/ |
-| ConfigMaps | https://kubernetes.io/docs/concepts/configuration/configmap/ |
-| Secrets | https://kubernetes.io/docs/concepts/configuration/secret/ |
-| Persistent Volumes | https://kubernetes.io/docs/concepts/storage/persistent-volumes/ |
-| RBAC | https://kubernetes.io/docs/reference/access-authn-authz/rbac/ |
-| Network Policies | https://kubernetes.io/docs/concepts/services-networking/network-policies/ |
-| Resource Management | https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/ |
-| HPA | https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/ |
-| Health Probes | https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/ |
-| Pod Security Standards | https://kubernetes.io/docs/concepts/security/pod-security-standards/ |
+| Resource | URL |
+|----------|-----|
+| CNCF Glossary | https://glossary.cncf.io/ |
+| CNCF Landscape | https://landscape.cncf.io/ |
+| CNCF Projects | https://www.cncf.io/projects/ |
 
 ---
 
-## Tools
+## Tools Used in This Learning Path
 
-| Tool | Dokumentation |
+| Tool | Documentation |
 |------|--------------|
 | kind | https://kind.sigs.k8s.io/ |
-| minikube | https://minikube.sigs.k8s.io/docs/ |
-| k3s | https://k3s.io/ |
 | Helm | https://helm.sh/docs/ |
 | Kustomize | https://kustomize.io/ |
 | Argo CD | https://argo-cd.readthedocs.io/ |
 | Prometheus | https://prometheus.io/docs/ |
 | Grafana | https://grafana.com/docs/ |
 | Metrics Server | https://github.com/kubernetes-sigs/metrics-server |
-| kubeadm | https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/ |
+| nginx Ingress Controller | https://kubernetes.github.io/ingress-nginx/ |
+| Artifact Hub (Helm Charts) | https://artifacthub.io/ |
 
 ---
 
-## CNCF (Cloud Native Computing Foundation)
+## Certifications
 
-| Ressource | URL |
-|-----------|-----|
-| CNCF Hauptseite | https://www.cncf.io/ |
-| CNCF Landscape | https://landscape.cncf.io/ |
-| CNCF Glossary | https://glossary.cncf.io/ |
-| CNCF Projekte | https://www.cncf.io/projects/ |
-
----
-
-## Zertifizierungen
-
-| Zertifizierung | Informationen |
-|----------------|---------------|
-| CKA (Certified Kubernetes Administrator) | https://training.linuxfoundation.org/certification/certified-kubernetes-administrator-cka/ |
-| CKAD (Certified Kubernetes Application Developer) | https://training.linuxfoundation.org/certification/certified-kubernetes-application-developer-ckad/ |
-| CKS (Certified Kubernetes Security Specialist) | https://training.linuxfoundation.org/certification/certified-kubernetes-security-specialist/ |
+| Certification | URL |
+|--------------|-----|
+| CKA – Certified Kubernetes Administrator | https://training.linuxfoundation.org/certification/certified-kubernetes-administrator-cka/ |
+| CKAD – Certified Kubernetes Application Developer | https://training.linuxfoundation.org/certification/certified-kubernetes-application-developer-ckad/ |
+| CKS – Certified Kubernetes Security Specialist | https://training.linuxfoundation.org/certification/certified-kubernetes-security-specialist/ |
 
 ---
 
-## Hochwertige Community-Ressourcen
+## Recommended Learning Resources
 
-| Ressource | Beschreibung |
-|-----------|-------------|
-| https://learnk8s.io/ | Tiefgehende Kubernetes-Artikel und -Kurse |
-| https://iximiuz.com/en/ | Interaktive Kubernetes-Labs und Artikel |
-| https://killer.sh/ | CKA/CKAD/CKS Prüfungssimulator |
-| https://www.youtube.com/@cncf | KubeCon Talks und CNCF-Content |
-| https://artifacthub.io/ | Helm Chart Repository |
-
----
-
-## GitHub Repositories (Offizielle Projekte)
-
-| Projekt | Repository |
-|---------|-----------|
-| Kubernetes | https://github.com/kubernetes/kubernetes |
-| Helm | https://github.com/helm/helm |
-| Argo CD | https://github.com/argoproj/argo-cd |
-| Prometheus | https://github.com/prometheus/prometheus |
-| kind | https://github.com/kubernetes-sigs/kind |
-| Metrics Server | https://github.com/kubernetes-sigs/metrics-server |
-| Sealed Secrets | https://github.com/bitnami-labs/sealed-secrets |
-| External Secrets Operator | https://github.com/external-secrets/external-secrets |
-| nginx Ingress Controller | https://github.com/kubernetes/ingress-nginx |
+| Resource | Description |
+|----------|-------------|
+| [killer.sh](https://killer.sh/) | Realistic CKA/CKAD/CKS exam simulator (included with exam purchase) |
+| [KodeKloud](https://kodekloud.com/) | CKA/CKAD courses with built-in labs |
+| [learnk8s.io](https://learnk8s.io/) | In-depth articles and courses |
+| [iximiuz.com](https://iximiuz.com/en/) | Deep-dive labs and blog posts |
+| [Kubernetes Slack](https://slack.k8s.io/) | Official community Slack |
+| [KubeCon Talks (YouTube)](https://www.youtube.com/@cncf) | Conference talks from CNCF |
 
 ---
 
-## OpenGitOps / GitOps-Prinzipien
+## GitHub Pages Deployment
 
-| Ressource | URL |
-|-----------|-----|
-| OpenGitOps | https://opengitops.dev/ |
-| GitOps Prinzipien | https://github.com/open-gitops/documents |
+This repository uses GitHub Actions to deploy the MkDocs website to GitHub Pages automatically on every push to `main`.
+
+**Required GitHub setting:**
+
+> Settings → Pages → Build and deployment → Source → **GitHub Actions**
+
+Once configured, the site is available at:
+
+```
+https://svnschmdt.github.io/k8s-learning-path/
+```

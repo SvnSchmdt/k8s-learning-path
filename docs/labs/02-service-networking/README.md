@@ -1,189 +1,147 @@
 # Lab 02 – Service & Networking
 
-## Was du baust
+## What you'll build
 
-Du machst das nginx-Deployment aus Lab 01 über einen Service erreichbar. Ein ClusterIP-Service routet Traffic intern zu den Pods. Ein NodePort-Service öffnet einen Port auf dem Node selbst. Du testest die Erreichbarkeit und verstehst, wie Kubernetes DNS für Services funktioniert.
+Two Services for the nginx Deployment from Lab 01: a ClusterIP for internal cluster access and a NodePort for external access. You will test both using `kubectl exec`, internal DNS, and `kubectl port-forward`.
 
-**Kubernetes-Objekte:** Service (ClusterIP), Service (NodePort), Endpoints
+**Kubernetes objects used:** Service (ClusterIP), Service (NodePort), Endpoints
 
-```text
-Anfrage intern (curl-test Pod)
-      │
-      ▼
-Service: nginx-clusterip (ClusterIP 10.96.x.x:80)
-      │
-      ├── Pod nginx (10.244.x.5:80)
-      ├── Pod nginx (10.244.x.6:80)
-      └── Pod nginx (10.244.x.7:80)
+```
+Internal access:
+  Pod → ClusterIP Service (nginx-service:80) → nginx Pods
 
-Anfrage von außen (Port-Forward)
-      │
-localhost:8080 ──► Service: nginx-nodeport ──► Pods
+External access:
+  Browser → NodePort (localhost:30080) → nginx Pods
+  OR
+  kubectl port-forward → nginx-service:80 → nginx Pods
 ```
 
-## Ziel
+## Goal
 
-Ein ClusterIP-Service leitet Traffic zu den nginx-Pods. Du hast den Service per DNS von innerhalb des Clusters angesprochen und per Port-Forward von außen.
+A working ClusterIP Service accessible via DNS from inside the cluster, and a NodePort Service accessible from your workstation.
 
-## Voraussetzungen
+## Prerequisites
 
-- [ ] Lab 01 abgeschlossen **oder** nginx-Deployment läuft (`kubectl get deployment nginx-deployment`)
-- [ ] kubectl konfiguriert
+- [ ] kind cluster running
+- [ ] nginx Deployment from Lab 01 running (or `kubectl apply -f manifests/` from Lab 01)
 
-## Schritt-für-Schritt
+## Step-by-Step
 
-### Schritt 1: nginx-Deployment sicherstellen
-
-```bash
-kubectl get deployment nginx-deployment
-```
-
-Falls nicht vorhanden:
-```bash
-kubectl apply -f ../01-nginx-deployment/manifests/deployment.yaml
-```
-
-### Schritt 2: ClusterIP Service erstellen
+### Step 1: Create the ClusterIP Service
 
 ```bash
 kubectl apply -f manifests/service-clusterip.yaml
-kubectl get service nginx-clusterip
 ```
 
-Erwartete Ausgabe:
+Expected output:
 ```text
-NAME              TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)   AGE
-nginx-clusterip   ClusterIP   10.96.42.100   <none>        80/TCP    10s
+service/nginx-service created
 ```
-
-### Schritt 3: Endpoints prüfen
 
 ```bash
-kubectl get endpoints nginx-clusterip
+kubectl get service nginx-service
 ```
 
-Erwartete Ausgabe:
+Expected output:
 ```text
-NAME              ENDPOINTS                                   AGE
-nginx-clusterip   10.244.0.5:80,10.244.0.6:80,10.244.0.7:80   30s
+NAME            TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE
+nginx-service   ClusterIP   10.96.xxx.xxx   <none>        80/TCP    10s
 ```
 
-Die IPs entsprechen den Pod-IPs:
-```bash
-kubectl get pods -l app=nginx -o wide
-```
-
-> [!TIP]
-> Wenn `ENDPOINTS` leer ist, stimmt der Selector nicht mit den Pod-Labels überein. Prüfe: `kubectl describe service nginx-clusterip` und `kubectl get pods --show-labels`.
-
-### Schritt 4: Service intern per DNS ansprechen
+### Step 2: Verify Endpoints are populated
 
 ```bash
-kubectl run curl-test \
-  --image=curlimages/curl:8.8.0 \
-  --rm -it --restart=Never \
-  -- curl -s http://nginx-clusterip.default.svc.cluster.local
+kubectl get endpoints nginx-service
 ```
 
-Erwartete Ausgabe (Auszug):
+Expected output (should list Pod IPs, not be empty):
 ```text
-<!DOCTYPE html>
-<html>
-<head>
-<title>Welcome to nginx!</title>
-...
+NAME            ENDPOINTS                                         AGE
+nginx-service   10.244.0.5:80,10.244.0.6:80,10.244.0.7:80       20s
 ```
 
-Der DNS-Name `nginx-clusterip.default.svc.cluster.local` setzt sich zusammen aus:
-`<service-name>.<namespace>.svc.cluster.local`
+> **Tip:** If Endpoints is empty, the Service selector labels don't match the Pod labels. Check `kubectl get pods --show-labels`.
 
-### Schritt 5: Port-Forward für lokalen Zugriff
+### Step 3: Test internal DNS access
 
 ```bash
-# Port-Forward im Hintergrund starten
-kubectl port-forward service/nginx-clusterip 8080:80 &
-
-# Von deinem Rechner aus aufrufen
-curl http://localhost:8080 | head -5
+kubectl run curl-test --rm -it --image=curlimages/curl -- \
+  curl http://nginx-service.default.svc.cluster.local
 ```
 
-Erwartete Ausgabe (Auszug):
+Expected output:
 ```text
 <!DOCTYPE html>
 <html>
-<head>
-<title>Welcome to nginx!</title>
+<head><title>Welcome to nginx!</title>...
 ```
+
+### Step 4: Test with port-forward
 
 ```bash
-# Port-Forward beenden
-kill %1
+kubectl port-forward service/nginx-service 8080:80
 ```
 
-### Schritt 6: NodePort Service erstellen
+In a second terminal:
+```bash
+curl http://localhost:8080
+```
+
+Expected output:
+```text
+<!DOCTYPE html>
+<html>
+<head><title>Welcome to nginx!</title>...
+```
+
+Press `Ctrl+C` to stop port-forward.
+
+### Step 5: Create the NodePort Service
 
 ```bash
 kubectl apply -f manifests/service-nodeport.yaml
 kubectl get service nginx-nodeport
 ```
 
-Erwartete Ausgabe:
+Expected output:
 ```text
-NAME             TYPE       CLUSTER-IP     EXTERNAL-IP   PORT(S)        AGE
-nginx-nodeport   NodePort   10.96.42.200   <none>        80:30080/TCP   10s
+NAME             TYPE       CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE
+nginx-nodeport   NodePort   10.96.xxx.xxx   <none>        80:30080/TCP   5s
 ```
 
 ```bash
-# Port-Forward auf den NodePort-Service
-kubectl port-forward service/nginx-nodeport 9090:80
+# In kind, access via port-forward on the NodePort service
+kubectl port-forward service/nginx-nodeport 30080:80
+curl http://localhost:30080
 ```
 
-In einem anderen Terminal:
-```bash
-curl http://localhost:9090 | head -3
-```
-
-## Validierung
+## Validation
 
 ```bash
-# Beide Services laufen
-kubectl get services
-```
+# Service exists
+kubectl get svc nginx-service nginx-nodeport
 
-Erwartete Ausgabe:
-```text
-NAME              TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)        AGE
-kubernetes        ClusterIP   10.96.0.1      <none>        443/TCP        10m
-nginx-clusterip   ClusterIP   10.96.42.100   <none>        80/TCP         5m
-nginx-nodeport    NodePort    10.96.42.200   <none>        80:30080/TCP   3m
-```
-
-```bash
-# DNS-Auflösung testen
-kubectl run dns-test \
-  --image=busybox:1.36 \
-  --rm -it --restart=Never \
-  -- nslookup nginx-clusterip.default.svc.cluster.local
-```
-
-Erwartete Ausgabe:
-```text
-Server:    10.96.0.10
-Address 1: 10.96.0.10 kube-dns.kube-system.svc.cluster.local
-
-Name:      nginx-clusterip.default.svc.cluster.local
-Address 1: 10.96.42.100 nginx-clusterip.default.svc.cluster.local
+# Endpoints are not empty
+kubectl get endpoints nginx-service
+kubectl get endpoints nginx-nodeport
 ```
 
 ## Cleanup
 
 ```bash
 kubectl delete -f manifests/
-kubectl delete deployment nginx-deployment --ignore-not-found
 ```
 
-## Erweiterungsaufgabe
+## Extension Task
 
-1. Ändere den Selector in `service-clusterip.yaml` auf ein nicht-existierendes Label (`app: gibts-nicht`). Was zeigt `kubectl get endpoints nginx-clusterip`?
-2. Erstelle ein zweites Deployment mit Label `app: nginx-v2` und dirigiere den Service auf die neue Version – ohne Ausfallzeit.
-3. Öffne einen Port-Forward und lösche dann einen der nginx-Pods. Funktioniert `curl localhost:8080` noch? Warum?
+Create a Service with session affinity so that repeated requests from the same client always go to the same Pod:
+
+```yaml
+spec:
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+```
+
+Test whether consecutive requests go to the same Pod by checking the Pod's hostname in the response.

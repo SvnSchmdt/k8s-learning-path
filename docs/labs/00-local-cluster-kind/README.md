@@ -1,133 +1,149 @@
-# Lab 00 – Lokalen Cluster mit kind aufsetzen
+# Lab 00 – Local Cluster with kind
 
-## Was du baust
+## What you'll build
 
-Du richtest eine vollständige lokale Kubernetes-Entwicklungsumgebung ein. Am Ende läuft ein Kubernetes-Cluster als Docker-Container auf deinem Rechner, und du kannst ihn über kubectl steuern.
+In this lab you set up a fully functional local Kubernetes cluster using kind (Kubernetes in Docker). This cluster is the foundation for all other labs. You will verify the installation and run your first workload.
 
-**Kubernetes-Objekte in diesem Lab:** noch keine – dieses Lab legt die Grundlage für alle weiteren.
+**Kubernetes objects used:** none (cluster setup only)
 
-```text
-Dein Rechner
-    │
-    ├── Docker
-    │     └── kind-Container (= Kubernetes Node)
-    │               └── Kubernetes Control Plane
-    │
-    └── kubectl ──────────────────────────> API Server
+```
+Docker Engine
+  └── kind container (k8s-learning-control-plane)
+        └── Kubernetes API Server
+              └── kubectl (your workstation)
 ```
 
-## Ziel
+## Goal
 
-Ein lokaler kind-Cluster läuft. kubectl ist konfiguriert und zeigt den Node im Status `Ready`.
+A running kind cluster with `kubectl` configured, verified with `kubectl get nodes` showing `Ready`.
 
-## Voraussetzungen
+## Prerequisites
 
-- [ ] Docker oder Docker Desktop läuft – prüfen mit `docker version`
-- [ ] Internetverbindung für Downloads
+- [ ] Docker Desktop running (or Docker Engine on Linux)
+- [ ] Internet connection (for image download)
+- [ ] Terminal access
 
-> [!IMPORTANT]
-> Docker muss laufen, bevor du kind verwendest. kind startet Kubernetes-Nodes als Docker-Container.
+## Step-by-Step
 
-## Schritt-für-Schritt
-
-### Schritt 1: kind installieren
+### Step 1: Install tools
 
 ```bash
-# macOS
-brew install kind
-
-# Linux (amd64)
-curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.23.0/kind-linux-amd64
-chmod +x ./kind
-sudo mv ./kind /usr/local/bin/kind
-
-# Windows (PowerShell)
-winget install Kubernetes.kind
-```
-
-```bash
-# Version prüfen
-kind version
-```
-
-Erwartete Ausgabe:
-```text
-kind v0.23.0 go1.21.x linux/amd64
-```
-
-### Schritt 2: kubectl installieren
-
-```bash
-# macOS
-brew install kubectl
+# macOS (Homebrew)
+brew install kind kubectl helm
 
 # Linux
-curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-chmod +x kubectl
-sudo mv kubectl /usr/local/bin/
+curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.23.0/kind-linux-amd64
+chmod +x ./kind && sudo mv ./kind /usr/local/bin/kind
+
+curl -LO "https://dl.k8s.io/release/$(curl -sL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+chmod +x kubectl && sudo mv kubectl /usr/local/bin/kubectl
 ```
 
+Verify:
+
 ```bash
-# Version prüfen
+kind version
 kubectl version --client
 ```
 
-Erwartete Ausgabe:
+Expected output:
 ```text
+kind v0.23.0 go1.21.x ...
 Client Version: v1.30.x
-Kustomize Version: v5.x.x
 ```
 
-### Schritt 3: Cluster erstellen
+### Step 2: Create the cluster
 
 ```bash
-kind create cluster --name k8s-lernpfad
+kind create cluster --name k8s-learning
 ```
 
-Erwartete Ausgabe:
+Expected output:
 ```text
-Creating cluster "k8s-lernpfad" ...
+Creating cluster "k8s-learning" ...
  ✓ Ensuring node image (kindest/node:v1.30.x) 🖼
  ✓ Preparing nodes 📦
  ✓ Writing configuration 📜
  ✓ Starting control-plane 🕹️
  ✓ Installing CNI 🔌
  ✓ Installing StorageClass 💾
-Set kubectl context to "kind-k8s-lernpfad"
+Set kubectl context to "kind-k8s-learning"
 You can now use your cluster with:
-kubectl cluster-info --context kind-k8s-lernpfad
+
+kubectl cluster-info --context kind-k8s-learning
 ```
 
-> [!TIP]
-> Der erste Start dauert länger, weil das Node-Image heruntergeladen wird (ca. 800 MB). Folgestarts sind schnell.
+> **Note:** First run downloads the kind node image (~700 MB). This takes a few minutes depending on your connection speed.
 
-### Schritt 4: Kontext prüfen
+### Step 3: Verify the cluster
 
 ```bash
-kubectl config current-context
+kubectl get nodes
 ```
 
-Erwartete Ausgabe:
+Expected output:
 ```text
-kind-k8s-lernpfad
+NAME                         STATUS   ROLES           AGE   VERSION
+k8s-learning-control-plane   Ready    control-plane   60s   v1.30.x
 ```
+
+```bash
+kubectl get pods -n kube-system
+```
+
+Expected output (all pods should be Running):
+```text
+NAME                                                 READY   STATUS    RESTARTS   AGE
+coredns-...                                          1/1     Running   0          90s
+etcd-k8s-learning-control-plane                      1/1     Running   0          90s
+kube-apiserver-k8s-learning-control-plane            1/1     Running   0          90s
+kube-controller-manager-k8s-learning-control-plane   1/1     Running   0          90s
+kube-proxy-...                                       1/1     Running   0          90s
+kube-scheduler-k8s-learning-control-plane            1/1     Running   0          90s
+```
+
+### Step 4: Run your first workload
+
+```bash
+kubectl run hello --image=nginx:1.27-alpine --restart=Never
+kubectl get pod hello
+```
+
+Expected output:
+```text
+NAME    READY   STATUS    RESTARTS   AGE
+hello   1/1     Running   0          10s
+```
+
+```bash
+kubectl delete pod hello
+```
+
+## Validation
 
 ```bash
 kubectl cluster-info
+# Kubernetes control plane is running at https://127.0.0.1:...
+kubectl config current-context
+# kind-k8s-learning
 ```
 
-Erwartete Ausgabe:
-```text
-Kubernetes control plane is running at https://127.0.0.1:XXXXX
-CoreDNS is running at https://127.0.0.1:XXXXX/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
+## Cleanup
+
+> **Caution:** This deletes the entire cluster and all resources in it.
+
+```bash
+kind delete cluster --name k8s-learning
 ```
 
-### Schritt 5: Cluster mit mehreren Nodes (optional)
+To recreate it: `kind create cluster --name k8s-learning`
 
-Für realistischere Szenarien – erstelle `kind-config.yaml`:
+## Extension Task
+
+Create a cluster with a custom configuration — 1 control-plane node and 2 worker nodes:
 
 ```yaml
-# kind-config.yaml
+# kind-multinode.yaml
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
@@ -137,81 +153,6 @@ nodes:
 ```
 
 ```bash
-kind create cluster --name k8s-multi --config kind-config.yaml
-```
-
-## Validierung
-
-```bash
-# Nodes anzeigen – alle müssen Ready sein
+kind create cluster --name k8s-multinode --config kind-multinode.yaml
 kubectl get nodes
 ```
-
-Erwartete Ausgabe:
-```text
-NAME                         STATUS   ROLES           AGE   VERSION
-k8s-lernpfad-control-plane   Ready    control-plane   2m    v1.30.x
-```
-
-```bash
-# System-Pods prüfen – alle sollten Running oder Completed sein
-kubectl get pods -n kube-system
-```
-
-Erwartete Ausgabe (ca.):
-```text
-NAME                                                 READY   STATUS    RESTARTS   AGE
-coredns-xxxxxxxxx-xxxxx                              1/1     Running   0          2m
-coredns-xxxxxxxxx-yyyyy                              1/1     Running   0          2m
-etcd-k8s-lernpfad-control-plane                      1/1     Running   0          2m
-kube-apiserver-k8s-lernpfad-control-plane            1/1     Running   0          2m
-kube-controller-manager-k8s-lernpfad-control-plane   1/1     Running   0          2m
-kube-scheduler-k8s-lernpfad-control-plane            1/1     Running   0          2m
-```
-
-```bash
-# Ersten Test-Pod starten
-kubectl run hello --image=nginx:1.27-alpine --restart=Never
-kubectl get pod hello
-```
-
-Erwartete Ausgabe:
-```text
-NAME    READY   STATUS    RESTARTS   AGE
-hello   1/1     Running   0          15s
-```
-
-```bash
-# Nginx-Startlog ansehen
-kubectl logs hello
-```
-
-## Cleanup
-
-```bash
-# Test-Pod löschen
-kubectl delete pod hello
-
-# Alle kind-Cluster anzeigen
-kind get clusters
-```
-
-> [!CAUTION]
-> Der folgende Befehl löscht den gesamten Cluster und alle darin befindlichen Ressourcen:
->
-> ```bash
-> kind delete cluster --name k8s-lernpfad
-> ```
->
-> Für die nächsten Labs muss der Cluster laufen – lösche ihn erst am Ende des Lernpfads.
-
-## Erweiterungsaufgabe
-
-Erstelle einen kind-Cluster mit einer spezifischen Kubernetes-Version. Verfügbare Versionen findest du auf der [kind-Release-Seite](https://github.com/kubernetes-sigs/kind/releases):
-
-```bash
-kind create cluster --name k8s-v129 \
-  --image kindest/node:v1.29.4
-```
-
-Vergleiche die kubectl-Ausgabe beider Cluster und beobachte den Versionsunterschied.

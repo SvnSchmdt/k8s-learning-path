@@ -1,45 +1,77 @@
-# Modul 04 – Pods & Workloads
+# Module 04 – Pods & Workloads
 
-## Ziel des Moduls
+## Goal
 
-Nach diesem Modul verstehst du Pods, Deployments, ReplicaSets und weitere Workload-Typen. Du kannst Deployments erstellen, skalieren, aktualisieren und Rollbacks durchführen.
+After this module you understand the relationship between Pods, ReplicaSets, and Deployments. You can deploy applications, scale them, perform rolling updates, and roll back to previous versions.
 
-## Warum ist das wichtig?
+## Why does this matter?
 
-Pods und Deployments sind das Herzstück von Kubernetes. Fast jede Anwendung läuft als Deployment. Wer Deployments, ReplicaSets und Rolling Updates versteht, kann Anwendungen zuverlässig betreiben.
+In real workloads, you almost never create Pods directly. Deployments manage Pods for you — they handle redundancy, rolling updates, and rollbacks. Understanding how Deployments, ReplicaSets, and Pods relate is fundamental to everything that follows.
 
-## Kernkonzepte
+## Key Concepts
 
-- **Pod:** Die kleinste deploybare Einheit in Kubernetes. Enthält einen oder mehrere eng gekoppelte Container, die sich Netzwerk und Storage teilen. Pods sind kurzlebig – sie werden ersetzt, nicht repariert.
-- **ReplicaSet:** Stellt sicher, dass immer eine bestimmte Anzahl identischer Pod-Kopien läuft. Wird meistens nicht direkt erstellt, sondern vom Deployment verwaltet.
-- **Deployment:** Die bevorzugte Art, zustandslose Anwendungen zu betreiben. Verwaltet ReplicaSets und ermöglicht Rolling Updates und Rollbacks.
-- **DaemonSet:** Sorgt dafür, dass auf jedem (oder bestimmten) Nodes genau ein Pod läuft. Typisch für Log-Collector, Monitoring-Agents.
-- **StatefulSet:** Für zustandsbehaftete Anwendungen (z.B. Datenbanken). Pods haben stabile Identitäten und persistenten Storage.
-- **Job / CronJob:** Für einmalige oder regelmäßige Aufgaben, die einmal laufen und dann beendet sind.
+- **Pod:** The smallest deployable unit. One or more containers sharing network and storage. Pods are ephemeral — when they die, they are not recreated automatically.
+- **ReplicaSet:** Ensures a specified number of identical Pod replicas are running at all times. Automatically replaces failed Pods.
+- **Deployment:** Manages ReplicaSets. Provides declarative updates, rolling update strategy, and rollback capability. This is what you use in practice.
+- **Rolling Update:** The default update strategy. New Pods are created before old ones are removed, ensuring zero downtime.
+- **Rollback:** Revert a Deployment to a previous version using `kubectl rollout undo`.
 
-## Labels und Selectors
+## Hierarchy
 
-Labels sind Key-Value-Paare an Kubernetes-Ressourcen. Selectors filtern Ressourcen nach Labels. Services und Deployments verwenden Selectors, um Pods zu finden.
-
-```yaml
-# Labels an einem Pod
-metadata:
-  labels:
-    app: nginx
-    version: v1
-    umgebung: produktion
+```
+Deployment
+  └── ReplicaSet (current)
+        ├── Pod
+        ├── Pod
+        └── Pod
+  └── ReplicaSet (previous, scaled to 0)
 ```
 
-## Praxisaufgabe
+## Hands-On Task
 
-### Deployment erstellen und verwalten
+### Create a Deployment
+
+```bash
+kubectl create deployment nginx --image=nginx:1.27-alpine --replicas=3
+kubectl get deployments
+kubectl get replicasets
+kubectl get pods
+```
+
+### Scale
+
+```bash
+kubectl scale deployment nginx --replicas=5
+kubectl get pods -w   # watch pods appear
+```
+
+### Perform a rolling update
+
+```bash
+kubectl set image deployment/nginx nginx=nginx:1.27-alpine
+kubectl rollout status deployment/nginx
+```
+
+### Inspect rollout history
+
+```bash
+kubectl rollout history deployment/nginx
+```
+
+### Roll back
+
+```bash
+kubectl rollout undo deployment/nginx
+kubectl rollout status deployment/nginx
+```
+
+## Deployment YAML
 
 ```yaml
-# deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: nginx-deployment
+  name: nginx
 spec:
   replicas: 3
   selector:
@@ -53,97 +85,40 @@ spec:
       containers:
       - name: nginx
         image: nginx:1.27-alpine
-        ports:
-        - containerPort: 80
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
 ```
 
-```bash
-kubectl apply -f deployment.yaml
-kubectl get deployments
-kubectl get replicasets
-kubectl get pods
-```
+## Common Mistakes
 
-### Deployment skalieren
-
-```bash
-# Imperativ
-kubectl scale deployment nginx-deployment --replicas=5
-
-# Deklarativ: replicas in YAML ändern und erneut apply
-kubectl apply -f deployment.yaml
-```
-
-### Rolling Update
-
-```bash
-# Image-Version aktualisieren
-kubectl set image deployment/nginx-deployment nginx=nginx:1.28-alpine
-
-# Update-Status beobachten
-kubectl rollout status deployment/nginx-deployment
-
-# Update-Historie anzeigen
-kubectl rollout history deployment/nginx-deployment
-```
-
-### Rollback
-
-```bash
-# Zur vorherigen Version zurück
-kubectl rollout undo deployment/nginx-deployment
-
-# Zu einer bestimmten Revision zurück
-kubectl rollout undo deployment/nginx-deployment --to-revision=1
-```
-
-## Beispiel-Kommandos
-
-```bash
-# Deployment-Details anzeigen
-kubectl describe deployment nginx-deployment
-
-# ReplicaSet anzeigen
-kubectl get rs
-
-# Pods mit Labels anzeigen
-kubectl get pods --show-labels
-
-# Pods nach Label filtern
-kubectl get pods -l app=nginx
-```
-
-## Typische Fehler
-
-- **Pod direkt erstellen:** Pods ohne Deployment zu erstellen bedeutet, dass sie bei Ausfall nicht neu gestartet werden.
-- **Selector stimmt nicht mit Template-Labels überein:** Deployment schlägt fehl. Labels in `spec.selector.matchLabels` müssen exakt mit `spec.template.metadata.labels` übereinstimmen.
-- **`latest`-Tag nutzen:** Kubernetes cached Images. `latest` kann zu inkonsistenten Deployments führen. Spezifische Versionen verwenden.
-- **Deployment pausiert aus Versehen:** `kubectl rollout pause deployment/<name>` hält das Update an. Mit `kubectl rollout resume` fortsetzen.
+- **Editing Pods directly:** Pods managed by a Deployment cannot be edited directly (most fields are immutable). Edit the Deployment instead.
+- **Label mismatch:** The `selector.matchLabels` must match `template.metadata.labels`. If they don't match, the Deployment can't find its own Pods.
+- **Forgetting resource requests/limits:** Always set them. Without them, a Pod can consume all node resources and starve other workloads.
 
 ## Checkpoint
 
-Du hast das Modul verstanden, wenn du folgende Fragen beantworten kannst:
-- [ ] Was ist der Unterschied zwischen Pod, ReplicaSet und Deployment?
-- [ ] Was passiert, wenn du einen Pod löscht, der Teil eines Deployments ist?
-- [ ] Wie führst du ein Rolling Update durch, ohne Downtime zu erzeugen?
-- [ ] Wann würdest du ein DaemonSet statt einem Deployment verwenden?
-- [ ] Was ist der Unterschied zwischen `kubectl scale` und dem Ändern von `replicas` in der YAML-Datei?
+- [ ] What is the difference between a Pod, a ReplicaSet, and a Deployment?
+- [ ] What happens to Pods when you scale a Deployment down to 0?
+- [ ] What does a rolling update strategy guarantee?
+- [ ] How do you roll back a Deployment to the previous version?
 
 ## Definition of Done
 
-Du bist mit diesem Modul fertig, wenn du:
+You are done with this module when you:
 
-- [ ] den Unterschied zwischen Pod, ReplicaSet und Deployment erklären kannst
-- [ ] ein Deployment mit 3 Replicas erstellt und auf 5 skaliert hast
-- [ ] ein Rolling Update durchgeführt und den Status mit `kubectl rollout status` beobachtet hast
-- [ ] einen Rollback erfolgreich durchgeführt hast
-- [ ] weißt, wann DaemonSet oder StatefulSet sinnvoller als Deployment ist
-- [ ] alle Checkpoint-Fragen beantworten kannst
+- [ ] Have created a Deployment and verified it manages a ReplicaSet and Pods
+- [ ] Have scaled a Deployment and watched Pods appear and disappear
+- [ ] Have performed a rolling update and checked the rollout status
+- [ ] Have rolled back a Deployment using `kubectl rollout undo`
+- [ ] Can answer all checkpoint questions
 
-## Weiterführende Links
+## Further Reading
 
 - [Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
 - [ReplicaSet](https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/)
-- [DaemonSet](https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/)
-- [StatefulSet](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/)
-- [Labels und Selectors](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/)
+- [Pods](https://kubernetes.io/docs/concepts/workloads/pods/)

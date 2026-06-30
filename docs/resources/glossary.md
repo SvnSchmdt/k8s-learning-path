@@ -1,212 +1,190 @@
-# Kubernetes Glossary
+# Glossary
 
-Wichtige Begriffe und Konzepte im Kubernetes-Ökosystem.
+Definitions for the most important Kubernetes concepts. Technical terms are kept in English — that is how they appear in `kubectl` output, documentation, and job descriptions.
 
 ---
 
 ## A
 
-**API Server (`kube-apiserver`)**  
-Die zentrale Komponente des Kubernetes Control Plane. Alle Kommunikation im Cluster läuft über den API Server – kubectl, andere Kubernetes-Komponenten und externe Tools sprechen ausschließlich mit ihm.
+**API Server (`kube-apiserver`)**
+The central management component of the Kubernetes control plane. All interactions with the cluster — from `kubectl` to controllers to kubelets — go through the API Server.
 
-**Annotation**  
-Key-Value-Metadaten an Kubernetes-Ressourcen. Im Gegensatz zu Labels nicht für Selektion gedacht, sondern für Metainformationen (Autor, Timestamp, Tool-Konfiguration).
-
----
+**Application (Argo CD)**
+An Argo CD custom resource that defines a source (Git repository + path) and a destination (cluster + namespace) for a GitOps deployment.
 
 ## C
 
-**ClusterIP**  
-Standard Service-Typ. Erstellt eine clusterinterne virtuelle IP, über die der Service erreichbar ist. Von außen nicht direkt erreichbar.
+**ClusterIP**
+The default Service type in Kubernetes. Assigns the Service a virtual IP that is only reachable from within the cluster.
 
-**ConfigMap**  
-Kubernetes-Ressource zum Speichern nicht-sensitiver Konfigurationsdaten als Key-Value-Paare oder Dateien.
+**ConfigMap**
+A Kubernetes object for storing non-sensitive configuration data as key-value pairs. Can be injected into Pods as environment variables or mounted as files.
 
-**Container Runtime**  
-Die Software, die Container tatsächlich ausführt. In Kubernetes meist `containerd` oder `CRI-O`. Docker ist seit Kubernetes 1.24 keine unterstützte Runtime mehr.
+**Container**
+A running instance of a container image. Containers are isolated processes that share the host OS kernel.
 
-**Control Plane**  
-Die Verwaltungsebene eines Kubernetes-Clusters. Besteht aus API Server, etcd, Scheduler und Controller Manager. Verwaltet den Cluster-Zustand.
+**Container Image**
+An immutable, layered package containing application code, runtime, dependencies, and configuration. Built from a Dockerfile.
 
-**CRD (Custom Resource Definition)**  
-Erweiterungsmechanismus von Kubernetes. Ermöglicht es, eigene Ressourcentypen in den Kubernetes-API einzufügen.
+**Container Runtime**
+Software that runs containers on a node. Examples: containerd, CRI-O.
 
----
+**Control Plane**
+The set of components that manage the Kubernetes cluster: API Server, etcd, Scheduler, and Controller Manager.
+
+**CrashLoopBackOff**
+A Pod status indicating a container crashes repeatedly. Kubernetes backs off exponentially before retrying.
+
+**CRD (Custom Resource Definition)**
+An extension of the Kubernetes API that allows defining custom resource types (e.g., Argo CD's `Application`).
 
 ## D
 
-**DaemonSet**  
-Workload-Ressource, die sicherstellt, dass auf jedem (oder bestimmten) Nodes genau ein Pod läuft. Typisch für Monitoring-Agents oder Log-Collectoren.
+**Deployment**
+A higher-level workload controller that manages ReplicaSets and provides rolling updates, rollbacks, and declarative scaling.
 
-**Deployment**  
-Kubernetes-Ressource für zustandslose Anwendungen. Verwaltet ReplicaSets und ermöglicht Rolling Updates und Rollbacks.
-
-**Desired State**  
-Der gewünschte Zustand, der in Kubernetes-Manifesten beschrieben wird. Kubernetes versucht kontinuierlich, den aktuellen Zustand (`current state`) dem gewünschten Zustand anzugleichen.
-
----
+**DNS (CoreDNS)**
+Kubernetes runs CoreDNS as the cluster-internal DNS server. Services are reachable by name: `<service>.<namespace>.svc.cluster.local`.
 
 ## E
 
-**etcd**  
-Verteilter Key-Value-Store, in dem Kubernetes den gesamten Cluster-Zustand persistiert. Ausfallsicher und konsistent. Bei etcd-Verlust verliert man die Cluster-Konfiguration.
+**Endpoint**
+An object that stores the IP addresses and ports of the Pods backing a Service. Updated automatically as Pods are created or deleted.
 
-**Endpoint**  
-Die tatsächliche IP-Adresse und Port eines Pods, auf den ein Service Traffic weiterleitet. Kubernetes pflegt Endpoints automatisch.
+**etcd**
+A distributed key-value store that holds the entire cluster state. All control plane components read from and write to etcd via the API Server.
 
----
+## G
+
+**GitOps**
+A set of practices where Git is the single source of truth for the desired state of infrastructure. Changes are made through pull requests; a controller (like Argo CD) applies them automatically.
 
 ## H
 
-**Helm**  
-Paketmanager für Kubernetes. Charts sind Pakete mit allen benötigten Kubernetes-Ressourcen für eine Anwendung.
+**Helm**
+A package manager for Kubernetes. Helm Charts bundle Kubernetes resources as templates with configurable values.
 
-**HPA (Horizontal Pod Autoscaler)**  
-Kubernetes-Ressource, die automatisch die Anzahl der Pod-Replicas basierend auf Metriken (CPU, Memory, Custom Metrics) skaliert.
-
----
+**HPA (HorizontalPodAutoscaler)**
+A Kubernetes controller that automatically scales the number of Pod replicas based on observed CPU or memory utilization.
 
 ## I
 
-**Ingress**  
-Kubernetes-Ressource, die HTTP(S)-Routing-Regeln für externen Traffic definiert. Benötigt einen Ingress Controller zum Funktionieren.
+**Image Pull Policy**
+Controls when Kubernetes pulls a container image: `Always`, `IfNotPresent`, or `Never`.
 
-**Ingress Controller**  
-Eine Komponente (oft ein Reverse Proxy wie nginx oder Traefik), die Ingress Resources auswertet und Traffic tatsächlich weiterleitet.
+**Ingress**
+A Kubernetes resource that defines HTTP(S) routing rules. Requires an Ingress Controller to take effect.
 
----
-
-## J
-
-**Job**  
-Kubernetes-Ressource für einmalige Aufgaben. Ein Job läuft bis zum Abschluss (Exit Code 0) und erstellt einen oder mehrere Pods.
-
----
+**Ingress Controller**
+A component that reads Ingress resources and routes traffic accordingly. Examples: nginx-ingress, Traefik.
 
 ## K
 
-**kubectl**  
-Kubernetes Command Line Interface. Das primäre Tool zur Interaktion mit einem Kubernetes-Cluster.
+**kind (Kubernetes in Docker)**
+A tool for running Kubernetes clusters inside Docker containers. Used for local development and testing.
 
-**kubeconfig**  
-Konfigurationsdatei (Standard: `~/.kube/config`), die Cluster, User und Contexts für kubectl definiert.
+**kubeconfig**
+A configuration file (default: `~/.kube/config`) that defines clusters, users, and contexts for `kubectl`.
 
-**kubelet**  
-Agent, der auf jedem Node läuft. Empfängt Anweisungen vom API Server und verwaltet Pods auf dem Node.
+**kubelet**
+An agent running on every worker node. Ensures that containers described in PodSpecs are running and healthy.
 
-**kube-proxy**  
-Netzwerk-Proxy auf jedem Node. Implementiert die Kubernetes Service-Abstraktion über iptables oder IPVS.
+**kubectl**
+The Kubernetes command-line tool. Communicates with the API Server over HTTPS.
 
----
+**Kustomize**
+A tool for customizing Kubernetes YAML configurations using a patch-based overlay system. Built into `kubectl`.
 
 ## L
 
-**Label**  
-Key-Value-Paar an Kubernetes-Ressourcen. Wird für Selektion und Gruppierung verwendet (z.B. Services finden Pods über Labels).
+**Label**
+A key-value pair attached to a Kubernetes object. Used by selectors to identify sets of objects (e.g., Service → Pods).
 
-**LimitRange**  
-Namespace-Ressource, die Standard-Limits und Request-Werte für Pods/Container setzt.
+**Liveness Probe**
+A health check that determines whether a container is alive. Failure causes the container to be restarted.
 
-**LoadBalancer**  
-Service-Typ, der einen externen Load Balancer (in Cloud-Umgebungen) anfordert. Gibt dem Service eine externe IP.
-
----
+**LoadBalancer**
+A Service type that provisions an external load balancer (typically on cloud providers).
 
 ## N
 
-**Namespace**  
-Logische Trennung von Ressourcen innerhalb eines Clusters. Ideal für Team- oder Umgebungstrennung.
+**Namespace**
+A virtual cluster within a cluster. Used to separate environments, teams, or applications within the same physical cluster.
 
-**Node**  
-Physische oder virtuelle Maschine, die als Worker im Kubernetes-Cluster fungiert. Führt Pods aus.
+**Node**
+A physical or virtual machine that runs workloads. Each node runs a kubelet, kube-proxy, and a container runtime.
 
-**NodePort**  
-Service-Typ, der einen Port auf jedem Node öffnet. Erreichbar von außen über `<NodeIP>:<NodePort>`.
-
----
+**NodePort**
+A Service type that exposes the Service on a port on every Node, making it accessible from outside the cluster.
 
 ## O
 
-**Operator**  
-Kubernetes-Erweiterungsmuster: ein Controller + CRD, der domänenspezifisches Wissen kapselt. Ermöglicht komplexe zustandsbehaftete Anwendungen (z.B. Datenbanken) automatisiert zu verwalten.
+**OOMKilled**
+A container was killed because it exceeded its memory limit. OOM = Out Of Memory.
 
----
+**Operator**
+A Kubernetes pattern that uses a custom controller and CRDs to encode domain-specific operational knowledge (e.g., managing a database cluster).
 
 ## P
 
-**PDB (PodDisruptionBudget)**  
-Definiert, wie viele Pods gleichzeitig nicht verfügbar sein dürfen. Schützt vor zu vielen gleichzeitigen Unterbrechungen bei Wartungsarbeiten.
+**PersistentVolume (PV)**
+A storage resource in the cluster, provisioned by an admin or dynamically via a StorageClass.
 
-**Pod**  
-Die kleinste deploybare Einheit in Kubernetes. Enthält einen oder mehrere Container, die sich Netzwerk und Storage teilen.
+**PersistentVolumeClaim (PVC)**
+A request for storage by a Pod. The cluster binds the PVC to a matching PV.
 
-**PersistentVolume (PV)**  
-Storage-Ressource im Cluster, unabhängig vom Pod-Lebenszyklus.
+**Pod**
+The smallest deployable unit in Kubernetes. One or more containers sharing network namespace and storage volumes.
 
-**PersistentVolumeClaim (PVC)**  
-Anforderung für Storage durch eine Anwendung. Wird an ein PV gebunden.
-
-**Probe**  
-Health-Check für Container. Liveness Probe (Container lebendig?), Readiness Probe (Container bereit?), Startup Probe (Container gestartet?).
-
----
+**PodDisruptionBudget (PDB)**
+A policy that guarantees a minimum number of healthy replicas during voluntary disruptions (node drain, rolling update).
 
 ## R
 
-**RBAC (Role-Based Access Control)**  
-Autorisierungsmechanismus in Kubernetes. Kontrolliert über Roles und RoleBindings, wer was im Cluster machen darf.
+**RBAC (Role-Based Access Control)**
+Kubernetes' access control system. Permissions are defined in Roles and ClusterRoles, then granted via RoleBindings.
 
-**ReplicaSet**  
-Stellt sicher, dass eine bestimmte Anzahl identischer Pods läuft. Wird üblicherweise von einem Deployment verwaltet.
+**Readiness Probe**
+A health check that determines whether a container is ready to receive traffic. Failure removes the Pod from Service Endpoints.
 
-**Role**  
-RBAC-Ressource, die Berechtigungen für einen Namespace definiert.
+**ReplicaSet**
+A controller that ensures a specified number of Pod replicas are running at all times.
 
-**RoleBinding**  
-Verknüpft eine Role mit einem Subject (User, Group, ServiceAccount).
+**Role**
+An RBAC object that defines permissions within a specific namespace.
 
----
+**RoleBinding**
+Binds a Role (or ClusterRole) to a user, group, or ServiceAccount within a namespace.
 
 ## S
 
-**Scheduler (`kube-scheduler`)**  
-Control-Plane-Komponente, die entscheidet, auf welchem Node ein neuer Pod läuft.
+**Secret**
+A Kubernetes object for storing sensitive data (passwords, tokens, certificates). Data is base64-encoded.
 
-**Secret**  
-Kubernetes-Ressource für sensitive Daten. Werte werden Base64-kodiert gespeichert (kein Schutz!).
+**SecurityContext**
+Pod- or container-level security settings: run as non-root, read-only filesystem, drop Linux capabilities.
 
-**Selector**  
-Filtermechanismus über Labels. Services und Deployments verwenden Selectors, um zugehörige Pods zu finden.
+**Selector**
+A label query that identifies a set of objects. Services use selectors to find their backing Pods.
 
-**ServiceAccount**  
-Kubernetes-Identität für Pods. Ermöglicht Pods, auf die Kubernetes-API zuzugreifen.
+**Service**
+A stable network endpoint that load-balances traffic to a set of Pods identified by label selectors.
 
-**StatefulSet**  
-Workload für zustandsbehaftete Anwendungen (z.B. Datenbanken). Pods haben stabile Identitäten und geordnete Starts.
+**ServiceAccount**
+An identity for processes running inside a Pod. Used for authentication against the Kubernetes API.
 
-**StorageClass**  
-Definiert, wie Storage dynamisch bereitgestellt wird. Ermöglicht automatische PV-Erstellung beim PVC-Request.
+**Startup Probe**
+A health check that delays liveness checks until the startup probe passes. Prevents premature restarts of slow-starting applications.
 
----
-
-## T
-
-**Taint**  
-Eigenschaft eines Nodes, die verhindert, dass Pods ohne passende Tolerations auf diesem Node geplant werden.
-
-**Toleration**  
-Pod-Eigenschaft, die dem Pod erlaubt, auf Nodes mit bestimmten Taints geplant zu werden.
-
----
+**StorageClass**
+Defines how Persistent Volumes are dynamically provisioned (provisioner, parameters, reclaim policy).
 
 ## V
 
-**Volume**  
-Speicher, der in einen Container gemountet wird. Kann temporär (emptyDir) oder persistent (PVC) sein.
-
----
+**Volume**
+A directory accessible to containers in a Pod. Types range from ephemeral (`emptyDir`) to persistent (`PersistentVolumeClaim`).
 
 ## W
 
-**Worker Node**  
-Node im Cluster, der Workloads (Pods) ausführt. Enthält kubelet, kube-proxy und die Container Runtime.
+**Worker Node**
+A node that runs application workloads (Pods). Managed by the control plane.

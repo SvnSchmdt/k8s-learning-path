@@ -1,71 +1,74 @@
-# Modul 13 – GitOps mit Argo CD
+# Module 13 – GitOps with Argo CD
 
-## Ziel des Moduls
+## Goal
 
-Nach diesem Modul verstehst du das GitOps-Prinzip und kannst Argo CD als GitOps-Controller für automatisierte Kubernetes-Deployments einsetzen.
+After this module you understand the GitOps model and can deploy applications to Kubernetes using Argo CD. You know the difference between push-based and pull-based deployments.
 
-## Warum ist das wichtig?
+## Why does this matter?
 
-Manuelles Deployen mit `kubectl apply` ist fehleranfällig und nicht auditierbar. GitOps macht Git zur "Single Source of Truth" für deinen Cluster-Zustand. Jede Änderung ist versioniert, nachvollziehbar und kann rückgängig gemacht werden.
+Traditional CI/CD pipelines push changes to a cluster. GitOps inverts this: the cluster pulls its desired state from Git. This makes deployments auditable, reproducible, and self-healing. Argo CD is the most widely adopted GitOps tool in the Kubernetes ecosystem.
 
-## Kernkonzepte
+## Key Concepts
 
-- **GitOps:** Ein Betriebsmodell, bei dem der gewünschte Zustand eines Systems in einem Git-Repository deklariert wird. Automatisierte Prozesse gleichen den aktuellen Zustand mit dem deklarativen Soll-Zustand ab.
-- **Pull-based Deployment:** Argo CD läuft im Cluster und *pullt* Änderungen aus Git – statt dass ein externes System *pusht*. Das minimiert externe Zugriffe auf den Cluster.
-- **Application (Argo CD):** Ein Argo CD-Objekt, das definiert: Welches Git-Repo? Welcher Pfad? Welches Cluster? Welcher Namespace?
-- **Sync:** Argo CD erkennt Abweichungen zwischen Git und Cluster und "synct" den Cluster auf den Git-Zustand.
-- **Health Status:** Argo CD prüft, ob Ressourcen nicht nur deployed, sondern auch gesund sind.
-- **App-of-Apps Pattern:** Eine Argo CD Application, die andere Applications verwaltet. Skaliert GitOps für viele Services.
+- **GitOps:** A set of practices where Git is the single source of truth for the desired state of infrastructure and applications. Every change goes through a pull request.
+- **Push-based deployment:** A CI pipeline runs `kubectl apply` to push changes to the cluster. The pipeline needs cluster credentials.
+- **Pull-based deployment:** A controller inside the cluster watches a Git repository and applies changes automatically. No outbound credentials needed.
+- **Argo CD:** A declarative GitOps controller for Kubernetes. It continuously compares the desired state in Git with the actual state in the cluster and synchronizes them.
+- **Application (CRD):** The Argo CD custom resource that defines a source (Git repo + path) and destination (cluster + namespace).
+- **Sync:** The process of making the cluster state match the Git state.
+- **Self-heal:** Argo CD detects manual changes to the cluster and automatically reverts them to match Git.
 
-## Push-based vs. Pull-based Deployment
+## Push vs. Pull
 
 ```
-Push-based (traditionell):
-CI/CD System → kubectl apply → Cluster
-
-Pull-based (GitOps):
-Developer → git push → Git Repository
-                           ↑ Argo CD pollt
-                      Argo CD → sync → Cluster
+Push-based:  Git → CI Pipeline → kubectl apply → Cluster
+Pull-based:  Git ← Argo CD watches ← Cluster (Argo CD pulls and applies)
 ```
 
-## Praxisaufgabe
+## GitOps Principles
 
-### Argo CD installieren
+1. **Declarative:** All system configuration is expressed declaratively
+2. **Versioned:** The desired state is stored in Git (version-controlled, auditable)
+3. **Automatic:** Approved changes are applied automatically
+4. **Continuous:** Argo CD continuously ensures actual state matches desired state
+
+## Hands-On Task
+
+### Install Argo CD
 
 ```bash
 kubectl create namespace argocd
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
-kubectl apply -n argocd -f \
-  https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl wait --namespace argocd \
+  --for=condition=available deployment/argocd-server \
+  --timeout=120s
 
-# Warten bis Argo CD läuft
-kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=120s
-
-# Admin-Passwort abrufen
-kubectl -n argocd get secret argocd-initial-admin-secret \
-  -o jsonpath="{.data.password}" | base64 -d && echo
-
-# UI aufrufen
-kubectl port-forward svc/argocd-server -n argocd 8080:443
-# -> https://localhost:8080 (Zertifikat-Warnung ignorieren, admin / Passwort oben)
+# Access the UI
+kubectl port-forward -n argocd service/argocd-server 8080:443
 ```
 
-### Erste Application erstellen (deklarativ)
+### Get the initial admin password
+
+```bash
+kubectl get secret argocd-initial-admin-secret -n argocd \
+  -o jsonpath='{.data.password}' | base64 -d
+```
+
+### Create an Application
 
 ```yaml
-# argocd-application.yaml
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: nginx-app
+  name: my-app
   namespace: argocd
 spec:
   project: default
   source:
-    repoURL: https://github.com/<dein-user>/<dein-repo>.git
+    repoURL: https://github.com/your-org/your-repo.git
     targetRevision: HEAD
-    path: labs/01-nginx-deployment/manifests
+    path: manifests/
   destination:
     server: https://kubernetes.default.svc
     namespace: default
@@ -77,66 +80,36 @@ spec:
 
 ```bash
 kubectl apply -f argocd-application.yaml
+
+# Check sync status
+kubectl get application -n argocd
 ```
 
-### argocd CLI
+## Common Mistakes
 
-```bash
-# CLI installieren (macOS)
-brew install argocd
-
-# Login
-argocd login localhost:8080 --insecure --username admin --password <passwort>
-
-# Apps anzeigen
-argocd app list
-
-# App sync
-argocd app sync nginx-app
-
-# App-Status
-argocd app get nginx-app
-```
-
-## GitOps-Workflow
-
-```
-1. YAML-Manifest ändern
-2. git commit & git push
-3. Argo CD erkennt Änderung (Polling alle 3 Minuten oder via Webhook)
-4. Argo CD synct den Cluster auf den neuen Zustand
-5. Health-Status prüfen
-```
-
-## Typische Fehler
-
-- **App ist "OutOfSync":** Git und Cluster unterscheiden sich. `argocd app sync` oder `kubectl apply` manuell auslösen.
-- **Self-Heal loop:** Wenn manuell `kubectl apply` gemacht wird, korrigiert Argo CD es zurück. Das ist Absicht – GitOps bedeutet, dass Git die Wahrheit ist.
-- **Repo-Zugangsdaten:** Privates Repo braucht Credentials in Argo CD. In der UI oder per CLI konfigurieren.
-- **Namespace existiert nicht:** Das Ziel-Namespace muss existieren oder `CreateNamespace=true` muss gesetzt sein.
+- **Forgetting to enable `selfHeal`:** Without self-heal, manual `kubectl apply` changes persist and diverge from Git.
+- **Using `prune: false`:** Resources removed from Git will remain in the cluster and accumulate as dead weight.
+- **Deploying Argo CD itself via Argo CD:** Be careful with bootstrapping. Managing the Argo CD installation itself via GitOps requires careful ordering.
 
 ## Checkpoint
 
-Du hast das Modul verstanden, wenn du folgende Fragen beantworten kannst:
-- [ ] Was ist der Unterschied zwischen Push-based und Pull-based Deployment?
-- [ ] Was ist die "Single Source of Truth" in GitOps?
-- [ ] Was passiert, wenn du manuell `kubectl delete deployment` ausführst, und Argo CD ist aktiv?
-- [ ] Was bedeutet "Sync" in Argo CD?
-- [ ] Was ist der Vorteil von GitOps gegenüber manuellem `kubectl apply`?
+- [ ] What are the four GitOps principles?
+- [ ] What is the difference between push-based and pull-based deployments?
+- [ ] What does Argo CD do when `selfHeal: true` is set and someone runs `kubectl delete`?
+- [ ] What is an Argo CD Application resource?
 
 ## Definition of Done
 
-Du bist mit diesem Modul fertig, wenn du:
+You are done with this module when you:
 
-- [ ] erklären kannst was GitOps ist und was "Single Source of Truth" in diesem Kontext bedeutet
-- [ ] den Unterschied zwischen Push-based und Pull-based Deployment erklären kannst
-- [ ] Argo CD installiert und eine Application erstellt hast
-- [ ] eine Änderung im Git-Repo gepusht hast und sie im Cluster gesehen hast
-- [ ] alle Checkpoint-Fragen beantworten kannst
+- [ ] Can explain the four GitOps principles
+- [ ] Can explain the difference between push-based and pull-based deployments
+- [ ] Have installed Argo CD and created an Application resource
+- [ ] Have observed Argo CD sync a change from Git to the cluster
+- [ ] Can answer all checkpoint questions
 
-## Weiterführende Links
+## Further Reading
 
-- [Argo CD Dokumentation](https://argo-cd.readthedocs.io/)
-- [GitOps Prinzipien (OpenGitOps)](https://opengitops.dev/)
-- [CNCF GitOps Whitepaper](https://github.com/open-gitops/documents)
-- [App-of-Apps Pattern](https://argo-cd.readthedocs.io/en/stable/operator-manual/cluster-bootstrapping/)
+- [Argo CD Documentation](https://argo-cd.readthedocs.io/)
+- [GitOps Principles (OpenGitOps)](https://opengitops.dev/)
+- [Argo CD Application CRD](https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/)

@@ -1,274 +1,152 @@
-# Modul 11 – Observability
+# Module 11 – Observability
 
-## Ziel des Moduls
+## Goal
 
-Nach diesem Modul verstehst du die drei Säulen der Observability in Kubernetes: Metrics, Logs und Traces. Du kannst den Gesundheitszustand eines Pods gezielt prüfen, Probleme eingrenzen und weißt, welche Tools du wann einsetzt.
+After this module you can configure health probes, read resource metrics with `kubectl top`, interpret logs and events, and understand the role of Prometheus and Grafana in a production observability stack.
 
-## Warum ist das wichtig?
+## Why does this matter?
 
-In einem laufenden Kubernetes-Cluster passieren ständig Dinge: Pods crashen, Probes schlagen fehl, Ressourcen erschöpfen sich. Ohne Observability erkennst du diese Probleme erst, wenn Nutzer sich beschweren. Mit den richtigen Werkzeugen und Health Checks erkennst du Probleme frühzeitig – oder vermeidest sie ganz.
+A workload that runs is not the same as a workload that is healthy. Observability is what tells you the difference. Health probes protect your users from broken Pods receiving traffic. Metrics, logs, and events are the three pillars you use to diagnose every incident.
 
-> [!IMPORTANT]
-> Observability ist kein "Nice-to-have". In produktiven Clustern ist es eine Grundvoraussetzung. Wer keine Probes, keine Metrics und kein Logging hat, betreibt Kubernetes blind.
+!!! important "Observability is mandatory in production"
+    Probes, metrics, and log aggregation are not optional extras. A Pod without liveness and readiness probes is a reliability risk.
 
-## Kernkonzepte
+## Key Concepts
 
-- **Metrics:** Numerische Messwerte über Zeit. Beispiele: CPU-Auslastung in %, Memory-Verbrauch in MB, Anzahl HTTP-Requests pro Sekunde. Standard-Tool: Prometheus.
-- **Logs:** Textueller Output von Anwendungen und Kubernetes-Komponenten (stdout/stderr). kubectl-basiert für einfache Fälle, Log-Aggregatoren (Loki, EFK) für Produktion.
-- **Traces:** Verteilte Ablaufverfolgung von Requests über mehrere Services. Zeigt, wo Zeit verloren geht. Standard-Tool: OpenTelemetry / Jaeger.
-- **Events:** Kubernetes-interne Ereignisse (Pod gestartet, Probe fehlgeschlagen, OOMKilled). Kurzlebig, sehr nützlich für Debugging.
-- **Probes:** Health Checks, die Kubernetes direkt ausführt – ohne externe Monitoring-Lösung.
-- **Metrics Server:** Leichtgewichtiges Kubernetes-Add-on, das kurzfristige CPU/Memory-Metriken bereitstellt. Basis für `kubectl top` und HPA.
+- **Liveness Probe:** Kubernetes checks if the container is alive. If it fails, the container is restarted.
+- **Readiness Probe:** Kubernetes checks if the container is ready to receive traffic. If it fails, the Pod is removed from Service Endpoints — no traffic is sent to it.
+- **Startup Probe:** Kubernetes waits until the startup probe succeeds before starting liveness checks. Prevents premature restarts of slow-starting applications.
+- **Metrics Server:** Lightweight in-cluster metrics aggregator. Enables `kubectl top nodes` and `kubectl top pods`. Required for HPA.
+- **Prometheus:** Time-series metrics database. Scrapes `/metrics` endpoints from Pods and stores them.
+- **Grafana:** Visualization layer for Prometheus metrics. Provides dashboards.
+- **Events:** Kubernetes objects that record what happened in the cluster (Pod scheduled, image pulled, probe failed, etc.).
 
-## Die drei Säulen der Observability
+## Probe Types
 
-```
-Observability
-├── Metrics     → "Was passiert gerade?" (Zahlen, Graphen, Alerts)
-│                  Tool: Prometheus + Grafana
-│
-├── Logs        → "Was genau ist passiert?" (Texte, Zeitstempel)
-│                  Tool: kubectl logs, Loki, EFK Stack
-│
-└── Traces      → "Wie verhält sich das System als Ganzes?" (Request-Flow)
-                   Tool: OpenTelemetry, Jaeger
-```
+| Probe | Failure action | Use for |
+|-------|---------------|---------|
+| Liveness | Restart container | Detecting deadlocks, hangs |
+| Readiness | Remove from Service | Slow startup, temporary overload |
+| Startup | Restart container | Slow-starting applications |
 
-## Kubernetes Health Probes im Detail
-
-Probes sind der eingebaute Health-Check-Mechanismus von Kubernetes. Sie laufen in jedem Pod, ohne externe Tools.
-
-### Liveness Probe
-
-**Frage:** Lebt der Container noch?  
-**Fehlschlag:** Container wird neu gestartet.
+## Probe Check Methods
 
 ```yaml
+# HTTP GET
 livenessProbe:
   httpGet:
     path: /healthz
     port: 8080
-  initialDelaySeconds: 15   # Warte 15s nach Start
-  periodSeconds: 10          # Prüfe alle 10s
-  failureThreshold: 3        # Starte nach 3 Fehlschlägen neu
-```
+  initialDelaySeconds: 10
+  periodSeconds: 10
 
-> [!WARNING]
-> `initialDelaySeconds` zu kurz setzen ist ein häufiger Fehler. Wenn die App länger zum Starten braucht als der Delay, schlägt die Probe fehl → Container-Neustart → CrashLoopBackOff.
-
-### Readiness Probe
-
-**Frage:** Ist der Container bereit, Traffic anzunehmen?  
-**Fehlschlag:** Pod wird aus den Service-Endpoints entfernt (kein Traffic mehr).
-
-```yaml
+# TCP Socket
 readinessProbe:
-  httpGet:
-    path: /ready
-    port: 8080
+  tcpSocket:
+    port: 5432
   initialDelaySeconds: 5
   periodSeconds: 5
-  failureThreshold: 3
-```
 
-### Startup Probe
-
-**Frage:** Hat der Container erfolgreich gestartet?  
-**Zweck:** Gibt langsam startenden Apps (z.B. JVM) Zeit, bevor Liveness eingreift.
-
-```yaml
-startupProbe:
-  httpGet:
-    path: /healthz
-    port: 8080
-  failureThreshold: 30     # Gibt der App bis zu 300s (30 × 10s) zum Starten
+# Exec command
+livenessProbe:
+  exec:
+    command: ["cat", "/tmp/healthy"]
+  initialDelaySeconds: 5
   periodSeconds: 10
 ```
 
-### Unterschied Liveness vs. Readiness
+!!! warning "Set initialDelaySeconds carefully"
+    If `initialDelaySeconds` is too low, the liveness probe kills the container before it has time to start — causing a CrashLoopBackOff even when the application is fine.
 
-| Merkmal | Liveness | Readiness |
-|---------|----------|-----------|
-| Fehlschlag führt zu | Container-Neustart | Aus Endpoints entfernen |
-| Wann nutzen | Deadlocks, eingefrorene Prozesse | App noch nicht bereit (z.B. warmup) |
-| Traffic-Auswirkung | Keine sofortige | Sofort kein Traffic mehr |
+## The 5 Diagnostic Questions for Every Pod
 
-### Probe-Typen
+When a Pod is not behaving as expected, answer these five questions in order:
+
+```bash
+# 1. What is the Pod status?
+kubectl get pod <name>
+
+# 2. What happened recently?
+kubectl describe pod <name>   # check Events section at the bottom
+
+# 3. What does the container log say?
+kubectl logs <name>
+kubectl logs <name> --previous   # if the container already restarted
+
+# 4. Is the container actually using resources?
+kubectl top pod <name>
+
+# 5. Is the Service routing to this Pod?
+kubectl get endpoints <service-name>
+```
+
+## Hands-On Task
+
+### Install Metrics Server in kind
+
+```bash
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
+# Patch for kind (disable TLS verification for local cluster)
+kubectl patch deployment metrics-server -n kube-system \
+  --type json \
+  -p '[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}]'
+
+kubectl wait --namespace kube-system \
+  --for=condition=available deployment/metrics-server \
+  --timeout=90s
+```
+
+### Use kubectl top
+
+```bash
+kubectl top nodes
+kubectl top pods
+kubectl top pods -A
+```
+
+### Configure probes in a Deployment
 
 ```yaml
-# HTTP GET (häufigste Variante)
-httpGet:
-  path: /healthz
-  port: 8080
-
-# TCP Socket (für nicht-HTTP-Services)
-tcpSocket:
-  port: 5432
-
-# Befehl im Container ausführen (Exit Code 0 = gesund)
-exec:
-  command:
-  - sh
-  - -c
-  - "redis-cli ping | grep PONG"
+containers:
+- name: app
+  image: nginx:1.27-alpine
+  livenessProbe:
+    httpGet:
+      path: /
+      port: 80
+    initialDelaySeconds: 10
+    periodSeconds: 10
+  readinessProbe:
+    httpGet:
+      path: /
+      port: 80
+    initialDelaySeconds: 5
+    periodSeconds: 5
 ```
-
-## kubectl-basiertes Monitoring
-
-### kubectl top
-
-Voraussetzung: Metrics Server muss installiert sein.
-
-```bash
-# Node-Ressourcen
-kubectl top nodes
-```
-
-Ausgabe:
-```text
-NAME                         CPU(cores)   CPU%   MEMORY(bytes)   MEMORY%
-k8s-lernpfad-control-plane   182m         2%     891Mi           23%
-```
-
-```bash
-# Pod-Ressourcen im aktuellen Namespace
-kubectl top pods
-
-# Alle Namespaces, nach Memory sortiert
-kubectl top pods -A --sort-by=memory
-```
-
-### Logs
-
-```bash
-# Pod-Logs anzeigen
-kubectl logs <pod-name>
-
-# Logs in Echtzeit folgen
-kubectl logs <pod-name> -f
-
-# Logs des vorherigen Container-Runs (bei CrashLoopBackOff!)
-kubectl logs <pod-name> --previous
-
-# Logs mehrerer Pods über Label
-kubectl logs -l app=nginx --tail=50
-
-# Spezifischen Container in Multi-Container-Pod
-kubectl logs <pod-name> -c <container-name>
-```
-
-### Events
-
-Events zeigen, was Kubernetes intern gemacht hat – oft die schnellste Diagnose.
-
-```bash
-# Events nach Zeit sortiert
-kubectl get events --sort-by=.lastTimestamp
-
-# Events in allen Namespaces
-kubectl get events -A --sort-by=.lastTimestamp
-
-# Events für einen bestimmten Pod (am Ende von describe)
-kubectl describe pod <pod-name>
-```
-
-## Die 5 Diagnose-Fragen für jeden Pod
-
-Wenn etwas nicht stimmt, beantworte diese Fragen der Reihe nach:
-
-### 1. Ist der Pod gesund?
-```bash
-kubectl get pod <name>
-# STATUS: Running, Pending, CrashLoopBackOff, OOMKilled, ...
-```
-
-### 2. Wird Traffic angenommen?
-```bash
-# Ist der Pod in den Service-Endpoints?
-kubectl get endpoints <service-name>
-
-# Ist die Readiness Probe aktiv?
-kubectl describe pod <name> | grep -A5 "Readiness:"
-```
-
-### 3. Hat der Pod genug CPU und RAM?
-```bash
-kubectl top pod <name>
-kubectl describe pod <name> | grep -A5 "Limits:"
-```
-
-Wenn Memory-Verbrauch nahe am Limit: OOMKilled droht.
-
-### 4. Was sagen die Events?
-```bash
-kubectl describe pod <name>
-# Scrolle zum Ende – Events zeigen Fehler und Warnungen
-```
-
-### 5. Was sagen die Logs?
-```bash
-kubectl logs <name>
-kubectl logs <name> --previous  # bei CrashLoopBackOff
-```
-
-## Prometheus & Grafana (Ausblick)
-
-Für produktive Observability braucht man Langzeit-Metriken und Dashboards. Der Standard im CNCF-Ökosystem:
-
-**Prometheus:** Scrapet Metriken von Endpoints (`/metrics`) und speichert sie als Zeitreihen. Ermöglicht Alerting.
-
-**Grafana:** Visualisiert Metriken aus Prometheus (und anderen Quellen) als Dashboards.
-
-```bash
-# Installation mit Helm (kube-prometheus-stack = Prometheus + Grafana + Alertmanager)
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-helm repo update
-
-helm install monitoring prometheus-community/kube-prometheus-stack \
-  --namespace monitoring \
-  --create-namespace \
-  --set grafana.adminPassword=lernpfad123
-
-# Grafana öffnen
-kubectl port-forward -n monitoring svc/monitoring-grafana 3000:80
-# URL: http://localhost:3000 (admin / lernpfad123)
-```
-
-> [!TIP]
-> Im Grafana-Dashboard: "Kubernetes / Compute Resources / Namespace (Pods)" zeigt CPU und Memory aller Pods auf einen Blick.
-
-## Typische Fehler
-
-- **Liveness Probe zu aggressiv:** `initialDelaySeconds` zu klein → App startet noch → Probe schlägt fehl → CrashLoopBackOff.
-- **Readiness und Liveness verwechseln:** Liveness startet Container neu. Readiness entfernt ihn aus dem Load Balancer. Beide gleichzeitig falsch zu konfigurieren kann zu kaskadierten Ausfällen führen.
-- **kubectl top zeigt Fehler:** Metrics Server nicht installiert oder noch nicht bereit. `kubectl get pods -n kube-system | grep metrics` prüfen.
-- **Logs sind leer:** Der Container schreibt in stderr/stdout, aber du fragst den falschen Container oder Pod ab. `-c <containername>` und `--previous` prüfen.
-
-## Definition of Done
-
-Du bist mit diesem Modul fertig, wenn du:
-
-- [ ] den Unterschied zwischen Liveness, Readiness und Startup Probe erklären kannst
-- [ ] `kubectl top pods` und `kubectl get events` für die Diagnose nutzt
-- [ ] `kubectl logs --previous` bei einem CrashLoopBackOff-Pod angewendet hast
-- [ ] eine Readiness Probe konfiguriert hast und beobachtet hast wie der Service-Endpoint reagiert
-- [ ] die Checkpoint-Fragen beantworten kannst
 
 ## Checkpoint
 
-Du hast das Modul verstanden, wenn du folgende Fragen beantworten kannst:
-- [ ] Was ist der Unterschied zwischen Liveness und Readiness Probe?
-- [ ] Was passiert, wenn eine Liveness Probe 3× hintereinander fehlschlägt?
-- [ ] Was passiert, wenn eine Readiness Probe fehlschlägt?
-- [ ] Wie zeigst du Logs des Container-Runs *vor* dem letzten Crash an?
-- [ ] Was ist Prometheus, und was unterscheidet es vom Metrics Server?
-- [ ] Wie findest du heraus, warum ein Pod im Status `Pending` ist?
+- [ ] What is the difference between a liveness probe and a readiness probe?
+- [ ] What happens when a readiness probe fails?
+- [ ] Why is `initialDelaySeconds` important for liveness probes?
+- [ ] What command shows CPU and memory usage per Pod?
+- [ ] What is the difference between Prometheus and Metrics Server?
 
-## Weiterführende Links
+## Definition of Done
 
-- [Liveness, Readiness und Startup Probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/)
+You are done with this module when you:
+
+- [ ] Have configured liveness and readiness probes and observed their behavior
+- [ ] Have installed Metrics Server and used `kubectl top pods`
+- [ ] Have read Pod logs including `--previous` for a restarted container
+- [ ] Have located relevant Events using `kubectl describe pod`
+- [ ] Can explain the difference between Prometheus and Metrics Server
+- [ ] Can answer all checkpoint questions
+
+## Further Reading
+
+- [Configure Liveness, Readiness, and Startup Probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/)
 - [Metrics Server](https://github.com/kubernetes-sigs/metrics-server)
-- [Prometheus Operator](https://github.com/prometheus-operator/prometheus-operator)
-- [Grafana](https://grafana.com/docs/)
-- [OpenTelemetry](https://opentelemetry.io/docs/)
-- [Kubernetes Events](https://kubernetes.io/docs/reference/kubernetes-api/cluster-resources/event-v1/)
+- [Prometheus](https://prometheus.io/docs/introduction/overview/)
+- [kube-prometheus-stack (Helm)](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack)

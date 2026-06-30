@@ -1,144 +1,121 @@
-# Modul 07 – ConfigMaps, Secrets & Umgebungsvariablen
+# Module 07 – ConfigMaps, Secrets & Environment Variables
 
-## Ziel des Moduls
+## Goal
 
-Nach diesem Modul kannst du Konfigurationsdaten und sensitive Informationen sicher in Pods einbinden – als Umgebungsvariablen oder als gemountete Dateien. Du verstehst die Unterschiede zwischen ConfigMaps und Secrets.
+After this module you can inject configuration into Pods using ConfigMaps and Secrets — both as environment variables and as mounted files. You understand the security implications of Secrets and know what happens when a ConfigMap is updated.
 
-## Warum ist das wichtig?
+## Why does this matter?
 
-Konfiguration gehört nicht ins Container-Image. Images sollen unveränderlich sein und in verschiedenen Umgebungen (dev, staging, prod) gleich sein – nur die Konfiguration ändert sich. ConfigMaps und Secrets entkoppeln Konfiguration vom Image.
+Hardcoding configuration into container images is an anti-pattern. Images should be environment-agnostic. ConfigMaps and Secrets decouple configuration from the image, allowing the same image to run in dev, staging, and production with different configuration.
 
-## Kernkonzepte
+## Key Concepts
 
-- **ConfigMap:** Speichert nicht-sensitive Konfigurationsdaten als Key-Value-Paare oder ganze Dateien. Kann in Pods als Env-Variablen oder Dateien eingebunden werden.
-- **Secret:** Speichert sensitive Daten (Passwörter, API-Schlüssel, TLS-Zertifikate). Werte werden Base64-kodiert gespeichert. **Base64 ist keine Verschlüsselung** – Secrets sind standardmäßig im etcd unverschlüsselt.
-- **Environment Variables:** Einfachste Methode, Werte in Container einzubinden. Gut für einzelne Werte.
-- **Volume-Mount:** ConfigMap oder Secret wird als Dateisystem in den Container eingehängt. Gut für Konfigurationsdateien.
-- **envFrom:** Alle Keys einer ConfigMap oder eines Secrets als Env-Variablen einbinden.
+- **ConfigMap:** Stores non-sensitive key-value configuration data. Can be injected as environment variables or mounted as files.
+- **Secret:** Stores sensitive data (passwords, tokens, certificates). Data is base64-encoded (not encrypted by default at rest — use encryption at rest for production).
+- **Environment variables:** The simplest way to inject configuration. Available in the container as `$VAR_NAME`.
+- **Volume mount:** Mounts ConfigMap or Secret content as files. Useful for config files, certificates, and `.env` files.
+- **`envFrom`:** Inject all keys from a ConfigMap or Secret as environment variables at once.
 
-## Secret-Typen
+## ConfigMap vs. Secret
 
-| Typ | Verwendung |
-|-----|-----------|
-| `Opaque` | Standard – beliebige Key-Value-Paare |
-| `kubernetes.io/tls` | TLS-Zertifikate |
-| `kubernetes.io/dockerconfigjson` | Registry-Zugangsdaten |
-| `kubernetes.io/service-account-token` | ServiceAccount-Tokens |
+| | ConfigMap | Secret |
+|-|-----------|--------|
+| Use for | Non-sensitive config | Passwords, tokens, certs |
+| Stored as | Plain text | base64-encoded |
+| Max size | 1 MiB | 1 MiB |
+| Access control | RBAC | RBAC (stricter by default) |
 
-## Praxisaufgabe
+## Hands-On Task
 
-### ConfigMap erstellen
+### Create a ConfigMap
 
 ```bash
-# Imperativ aus Literal
+# From literal values
 kubectl create configmap app-config \
-  --from-literal=APP_ENV=produktion \
-  --from-literal=LOG_LEVEL=info
+  --from-literal=LOG_LEVEL=debug \
+  --from-literal=APP_PORT=8080
 
-# Aus Datei
-kubectl create configmap nginx-config --from-file=nginx.conf
+kubectl describe configmap app-config
 ```
 
+### Create a Secret
+
+```bash
+# From literal values (base64-encoded automatically)
+kubectl create secret generic db-credentials \
+  --from-literal=DB_USER=admin \
+  --from-literal=DB_PASSWORD=supersecret
+
+# View (base64-encoded)
+kubectl get secret db-credentials -o yaml
+```
+
+### Inject into a Pod
+
 ```yaml
-# Deklarativ
 apiVersion: v1
-kind: ConfigMap
+kind: Pod
 metadata:
-  name: app-config
-data:
-  APP_ENV: produktion
-  LOG_LEVEL: info
-  app.properties: |
-    server.port=8080
-    feature.x=true
-```
-
-### ConfigMap als Env-Variable einbinden
-
-```yaml
+  name: app-pod
 spec:
   containers:
   - name: app
     image: nginx:1.27-alpine
-    env:
-    - name: APP_ENV
-      valueFrom:
-        configMapKeyRef:
-          name: app-config
-          key: APP_ENV
     envFrom:
     - configMapRef:
         name: app-config
+    env:
+    - name: DB_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: db-credentials
+          key: DB_PASSWORD
 ```
-
-### ConfigMap als Datei mounten
-
-```yaml
-spec:
-  volumes:
-  - name: config-volume
-    configMap:
-      name: app-config
-  containers:
-  - name: app
-    image: nginx:1.27-alpine
-    volumeMounts:
-    - name: config-volume
-      mountPath: /etc/config
-```
-
-### Secret erstellen
 
 ```bash
-# Imperativ
-kubectl create secret generic db-credentials \
-  --from-literal=username=dbuser \
-  --from-literal=password=sicher123
-
-# Base64-Wert anzeigen (zur Kontrolle)
-kubectl get secret db-credentials -o jsonpath='{.data.password}' | base64 -d
+kubectl apply -f pod.yaml
+kubectl exec app-pod -- env | grep -E "LOG_LEVEL|DB_PASSWORD"
 ```
 
-### Secret als Env-Variable einbinden
+### Mount as files
 
 ```yaml
-env:
-- name: DB_PASSWORD
-  valueFrom:
-    secretKeyRef:
-      name: db-credentials
-      key: password
+volumes:
+- name: config-vol
+  configMap:
+    name: app-config
+containers:
+- name: app
+  volumeMounts:
+  - name: config-vol
+    mountPath: /etc/config
 ```
 
-## Typische Fehler
+## Common Mistakes
 
-- **Secrets im Git committen:** Niemals echte Secrets ins Repository. Nutze `.gitignore` oder Lösungen wie Sealed Secrets / Vault.
-- **Base64 als Sicherheit verstehen:** Base64 schützt nicht. Secrets im etcd sind standardmäßig unverschlüsselt.
-- **ConfigMap-Update wird nicht sofort sichtbar:** Bei Volume-Mounts werden Updates verzögert propagiert (~1 Minute). Env-Variablen werden erst beim Pod-Neustart aktualisiert.
-- **Key nicht gefunden:** Der angegebene Key existiert nicht in der ConfigMap. `kubectl describe configmap <name>` prüfen.
+- **Storing real secrets in Git:** Never commit actual credentials. Use `secret.example.yaml` with dummy values only.
+- **ConfigMap update not reflected in env vars:** Environment variables are resolved at Pod start. To pick up updates, restart the Pod. Volume-mounted files update automatically.
+- **Forgetting base64 encoding in YAML Secrets:** In a Secret YAML manifest, `data` values must be base64-encoded. Use `stringData` to provide plain text and let Kubernetes encode it.
 
 ## Checkpoint
 
-Du hast das Modul verstanden, wenn du folgende Fragen beantworten kannst:
-- [ ] Was ist der Unterschied zwischen ConfigMap und Secret?
-- [ ] Wann nimmst du Env-Variablen, wann Volume-Mounts?
-- [ ] Warum ist Base64 kein Schutz?
-- [ ] Was passiert, wenn du eine ConfigMap aktualisierst, die als Env-Variable eingebunden ist?
-- [ ] Welche Alternativen zu nativen K8s-Secrets gibt es für produktive Cluster?
+- [ ] What is the difference between a ConfigMap and a Secret?
+- [ ] What are the two ways to inject ConfigMap data into a Pod?
+- [ ] What happens to environment variable values when a ConfigMap is updated?
+- [ ] Why should Secrets not be committed to Git?
 
 ## Definition of Done
 
-Du bist mit diesem Modul fertig, wenn du:
+You are done with this module when you:
 
-- [ ] eine ConfigMap als Env-Variable und als gemountete Datei in einen Pod eingebunden hast
-- [ ] ein Secret erstellt und dessen Wert im Pod verifiziert hast
-- [ ] erklären kannst warum Base64 kein Schutz ist
-- [ ] weißt, was passiert wenn du eine ConfigMap änderst, die als Env-Variable genutzt wird
-- [ ] alle Checkpoint-Fragen beantworten kannst
+- [ ] Have created a ConfigMap and a Secret and injected both into a Pod
+- [ ] Have verified the environment variables are visible inside the container
+- [ ] Have mounted a ConfigMap as a file and read it from inside the Pod
+- [ ] Can explain the update behavior difference between env vars and volume mounts
+- [ ] Can answer all checkpoint questions
 
-## Weiterführende Links
+## Further Reading
 
 - [ConfigMaps](https://kubernetes.io/docs/concepts/configuration/configmap/)
 - [Secrets](https://kubernetes.io/docs/concepts/configuration/secret/)
-- [Umgebungsvariablen in Pods](https://kubernetes.io/docs/tasks/inject-data-application/define-environment-variable-container/)
-- [Sealed Secrets](https://github.com/bitnami-labs/sealed-secrets)
+- [Configure a Pod to Use a ConfigMap](https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/)

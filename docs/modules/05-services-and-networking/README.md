@@ -1,33 +1,33 @@
-# Modul 05 – Services & Networking
+# Module 05 – Services & Networking
 
-## Ziel des Moduls
+## Goal
 
-Nach diesem Modul verstehst du das Kubernetes-Netzwerkmodell und kannst Pods über Services erreichbar machen. Du kennst die verschiedenen Service-Typen und weißt, wann du welchen verwendest.
+After this module you understand why Services are necessary, know the three main Service types, and can expose Pods for both internal and external access. You understand how Kubernetes DNS enables service discovery.
 
-## Warum ist das wichtig?
+## Why does this matter?
 
-Pods sind kurzlebig und haben wechselnde IP-Adressen. Services geben dir einen stabilen Endpunkt, über den du Pods erreichst – unabhängig davon, wie viele Replicas laufen oder welche IP sie haben. Ohne Services kein funktionierendes Networking.
+Pods are ephemeral — they come and go, and their IP addresses change. Services provide a stable endpoint that always points to the current healthy Pods. Without Services, you can't reliably communicate between applications inside a cluster or reach them from outside.
 
-## Kernkonzepte
+## Key Concepts
 
-- **Service:** Ein stabiler, virtueller Netzwerkendpunkt, der Traffic zu Pods weiterleitet, die seinen Selector-Labels entsprechen.
-- **ClusterIP (Standard):** Nur innerhalb des Clusters erreichbar. Ideal für interne Kommunikation zwischen Services.
-- **NodePort:** Öffnet einen Port auf jedem Node des Clusters. Erreichbar von außerhalb über `<NodeIP>:<NodePort>`.
-- **LoadBalancer:** Fordert einen externen Load Balancer an (funktioniert in Cloud-Umgebungen). Lokal meist emuliert.
-- **Endpoints:** Kubernetes pflegt automatisch eine Endpoints-Liste für jeden Service – die aktuellen Pod-IPs.
-- **kube-proxy:** Läuft auf jedem Node und setzt iptables/IPVS-Regeln, die den Service-Traffic zu den richtigen Pods routen.
-- **DNS:** Kubernetes hat einen internen DNS-Server (CoreDNS). Jeder Service bekommt einen DNS-Namen: `<service-name>.<namespace>.svc.cluster.local`
+- **Service:** A stable network endpoint that load-balances traffic to a set of Pods selected by labels.
+- **ClusterIP:** Default type. The Service is reachable only from inside the cluster. Assigned a stable virtual IP.
+- **NodePort:** Exposes the Service on a port on every Node. Reachable from outside the cluster via `<NodeIP>:<NodePort>`.
+- **LoadBalancer:** Provisions an external load balancer (cloud providers). In kind, use port-forward or NodePort instead.
+- **Endpoints:** The actual Pod IPs that back a Service. Updated automatically as Pods come and go.
+- **DNS:** Kubernetes runs a built-in DNS server (CoreDNS). Services are reachable by name: `<service>.<namespace>.svc.cluster.local`.
 
-## Das Kubernetes Netzwerkmodell
+## Service Types Comparison
 
-Kubernetes folgt drei Grundregeln:
-1. Jeder Pod bekommt eine eigene IP-Adresse
-2. Alle Pods können direkt miteinander kommunizieren (ohne NAT)
-3. Services vermitteln stabilen Zugang zu Pods
+| Type | Reachable from | Use case |
+|------|----------------|----------|
+| ClusterIP | Inside cluster only | Service-to-service communication |
+| NodePort | Outside cluster via Node IP | Dev/testing, no cloud load balancer |
+| LoadBalancer | External load balancer IP | Production on cloud providers |
 
-## Praxisaufgabe
+## Hands-On Task
 
-### ClusterIP Service erstellen
+### Create a ClusterIP Service
 
 ```yaml
 # service-clusterip.yaml
@@ -47,82 +47,66 @@ spec:
 ```bash
 kubectl apply -f service-clusterip.yaml
 kubectl get service nginx-service
-kubectl describe service nginx-service
-
-# Endpoints prüfen (welche Pods werden angesprochen?)
 kubectl get endpoints nginx-service
 ```
 
-### Service intern testen
+### Test with port-forward
 
 ```bash
-# Temporären Pod starten und Service per DNS ansprechen
-kubectl run test-pod --image=busybox:1.36 --rm -it --restart=Never -- \
-  wget -qO- http://nginx-service.default.svc.cluster.local
-```
-
-### NodePort Service
-
-```bash
-# NodePort: macht den Service auf jedem Node auf einem bestimmten Port erreichbar
-kubectl expose deployment nginx-deployment --type=NodePort --port=80
-
-# Port ermitteln
-kubectl get service nginx-deployment
-```
-
-## Beispiel-Kommandos
-
-```bash
-# Alle Services anzeigen
-kubectl get services
-
-# Service-Details anzeigen
-kubectl describe service nginx-service
-
-# Service-YAML generieren (ohne zu erstellen)
-kubectl expose deployment nginx-deployment --port=80 --dry-run=client -o yaml
-
-# Endpoints anzeigen
-kubectl get endpoints
-```
-
-## Typische Fehler
-
-- **Selector stimmt nicht:** Service findet keine Pods. `kubectl get endpoints <service-name>` zeigt leere Liste. Labels im Service-Selector und Pods vergleichen.
-- **Falscher targetPort:** Der Service leitet auf Port 80, der Container hört aber auf 8080. `targetPort` muss dem Container-Port entsprechen.
-- **LoadBalancer bleibt `Pending`:** In kind gibt es keinen echten Load Balancer. Für lokales Testen NodePort oder Port-Forward nutzen.
-- **DNS-Auflösung funktioniert nicht:** CoreDNS läuft möglicherweise nicht. `kubectl get pods -n kube-system | grep coredns` prüfen.
-
-## Port-Forward für schnelle Tests
-
-```bash
-# Lokalen Port auf Service weiterleiten (kein Service-Typ erforderlich)
 kubectl port-forward service/nginx-service 8080:80
-# -> http://localhost:8080 erreichbar
+curl http://localhost:8080
 ```
+
+### Test internal DNS
+
+```bash
+# From inside a Pod
+kubectl run test --rm -it --image=curlimages/curl -- sh
+curl http://nginx-service.default.svc.cluster.local
+```
+
+### Create a NodePort Service
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-nodeport
+spec:
+  selector:
+    app: nginx
+  ports:
+  - port: 80
+    targetPort: 80
+    nodePort: 30080
+  type: NodePort
+```
+
+## Common Mistakes
+
+- **Empty Endpoints:** The Service exists but has no Endpoints. The selector labels don't match any Pod labels. Check `kubectl get endpoints <name>`.
+- **port vs targetPort confusion:** `port` is the Service port clients use. `targetPort` is the port on the Pod. They don't have to match.
+- **Expecting LoadBalancer to work in kind:** kind doesn't provision external load balancers. Use NodePort or port-forward instead.
 
 ## Checkpoint
 
-Du hast das Modul verstanden, wenn du folgende Fragen beantworten kannst:
-- [ ] Warum brauchen wir Services, wenn Pods doch IP-Adressen haben?
-- [ ] Was ist der Unterschied zwischen `port` und `targetPort` in einem Service?
-- [ ] Wie heißt der DNS-Name eines Services `my-app` im Namespace `production`?
-- [ ] Wann verwendest du ClusterIP, wann NodePort, wann LoadBalancer?
-- [ ] Was zeigt dir `kubectl get endpoints`?
+- [ ] Why do Pods need Services instead of being accessed directly by IP?
+- [ ] What is the difference between ClusterIP and NodePort?
+- [ ] How does Kubernetes DNS allow Pods to find Services by name?
+- [ ] What does it mean when a Service has empty Endpoints?
 
 ## Definition of Done
 
-Du bist mit diesem Modul fertig, wenn du:
+You are done with this module when you:
 
-- [ ] erklären kannst warum wir Services brauchen, obwohl Pods IP-Adressen haben
-- [ ] einen ClusterIP-Service erstellt und von innerhalb des Clusters per DNS angesprochen hast
-- [ ] `kubectl get endpoints` ausgeführt und die Ausgabe verstanden hast
-- [ ] den Unterschied zwischen `port` und `targetPort` erklären kannst
-- [ ] alle Checkpoint-Fragen beantworten kannst
+- [ ] Have created a ClusterIP Service and accessed it via port-forward
+- [ ] Have verified Endpoints are populated and match Pod IPs
+- [ ] Can explain the DNS name format for a Service
+- [ ] Can explain the difference between `port` and `targetPort`
+- [ ] Can answer all checkpoint questions
 
-## Weiterführende Links
+## Further Reading
 
 - [Services](https://kubernetes.io/docs/concepts/services-networking/service/)
-- [DNS für Services und Pods](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/)
-- [Kubernetes Netzwerkmodell](https://kubernetes.io/docs/concepts/cluster-administration/networking/)
+- [DNS for Services and Pods](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/)
+- [Connecting Applications with Services](https://kubernetes.io/docs/tutorials/services/connect-applications-service/)

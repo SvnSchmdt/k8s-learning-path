@@ -1,116 +1,109 @@
-# Modul 02 – Kubernetes Fundamentals
+# Module 02 – Kubernetes Fundamentals
 
-## Ziel des Moduls
+## Goal
 
-Nach diesem Modul verstehst du die Kubernetes-Architektur, die wichtigsten Komponenten und grundlegende Konzepte wie Deklarativität und den Control Loop. Du kannst erklären, was Kubernetes tut und warum es so aufgebaut ist.
+After this module you understand the Kubernetes architecture, can explain the role of each control plane component, and know the difference between declarative and imperative configuration.
 
-## Warum ist das wichtig?
+## Why does this matter?
 
-Kubernetes wirkt komplex, weil es viele Komponenten hat – aber das Grundprinzip ist elegant einfach: Du beschreibst den gewünschten Zustand, Kubernetes sorgt dafür, dass dieser Zustand erreicht und aufrechterhalten wird. Wer dieses Prinzip versteht, versteht Kubernetes.
+Kubernetes is complex. Knowing what's happening under the hood — which component does what and why — helps you debug problems instead of guessing. Understanding declarative configuration is the mental shift that makes Kubernetes click.
 
-## Kernkonzepte
+## Key Concepts
 
-- **Deklarativ vs. Imperativ:** Du sagst Kubernetes "ich will 3 Replicas laufen haben" – nicht "starte jetzt 3 Container". Kubernetes kümmert sich um das Wie.
-- **Control Loop / Reconciliation Loop:** Kubernetes vergleicht kontinuierlich den *desired state* (was du willst) mit dem *current state* (was gerade läuft) und bringt beides in Übereinstimmung.
-- **API Server:** Zentraler Einstiegspunkt für alle Kubernetes-Kommunikation. Alle Komponenten reden mit dem API Server, nicht direkt miteinander.
-- **etcd:** Verteilter Key-Value-Store. Hier speichert Kubernetes den gesamten Cluster-Zustand. Ausfallsicher und konsistent.
-- **Scheduler:** Entscheidet, auf welchem Node ein neuer Pod läuft, basierend auf Ressourcen, Affinität und anderen Regeln.
-- **Controller Manager:** Führt verschiedene Controller aus, z.B. den Deployment Controller oder ReplicaSet Controller. Sie beobachten den Cluster und reagieren auf Änderungen.
-- **kubelet:** Läuft auf jedem Node. Empfängt Anweisungen vom API Server und startet/stoppt Container über die Container Runtime.
-- **kube-proxy:** Verwaltet Netzwerkregeln auf jedem Node, damit Pods über Services erreichbar sind.
+- **Cluster:** A set of machines (nodes) running Kubernetes. Consists of a control plane and worker nodes.
+- **Control Plane:** The brain of the cluster. Manages scheduling, state, and API access.
+  - **API Server (`kube-apiserver`):** The only entry point for all cluster operations. kubectl talks to this.
+  - **etcd:** Distributed key-value store. Holds the entire cluster state.
+  - **Scheduler (`kube-scheduler`):** Decides which node a new Pod runs on.
+  - **Controller Manager (`kube-controller-manager`):** Runs controllers that watch cluster state and reconcile toward the desired state.
+- **Worker Node:** Runs the actual application workloads.
+  - **kubelet:** Agent on every node. Ensures containers defined in PodSpecs are running and healthy.
+  - **kube-proxy:** Handles network rules and Service routing on each node.
+  - **Container Runtime:** Runs containers (e.g., containerd, CRI-O).
+- **Pod:** The smallest deployable unit in Kubernetes. One or more containers that share network and storage.
+- **Namespace:** Virtual cluster within a cluster. Used to separate environments or teams.
 
-## Architektur im Überblick
+## Control Plane Architecture
 
 ```
-┌─────────────────────────────────────────────┐
-│              Control Plane                  │
-│  ┌──────────┐  ┌──────┐  ┌───────────────┐ │
-│  │API Server│  │ etcd │  │  Scheduler    │ │
-│  └──────────┘  └──────┘  └───────────────┘ │
-│  ┌─────────────────────────────────────────┐│
-│  │        Controller Manager               ││
-│  └─────────────────────────────────────────┘│
-└─────────────────────────────────────────────┘
-           │ API calls
-┌──────────┴──────────────────────────────────┐
-│                Worker Nodes                 │
-│  ┌────────┐  ┌────────────┐  ┌───────────┐ │
-│  │kubelet │  │ kube-proxy │  │  Runtime  │ │
-│  └────────┘  └────────────┘  └───────────┘ │
-│  ┌─────────────────────────────────────────┐│
-│  │    Pod   Pod   Pod   Pod                ││
-│  └─────────────────────────────────────────┘│
-└─────────────────────────────────────────────┘
+User → kubectl → API Server → etcd (state)
+                     ↓
+              Scheduler / Controller Manager
+                     ↓
+              kubelet (on each node) → Container Runtime → Pod
 ```
 
-## Wichtige Kubernetes-Objekte (Überblick)
+## Declarative vs. Imperative
 
-| Objekt | Zweck |
-|--------|-------|
-| **Pod** | Kleinste deploybare Einheit; eine oder mehrere Container |
-| **Deployment** | Verwaltet Pods deklarativ mit Rolling Updates |
-| **Service** | Stabiler Netzwerkendpunkt für eine Gruppe von Pods |
-| **ConfigMap** | Konfigurationsdaten für Pods |
-| **Secret** | Sensitive Daten (Passwörter, Tokens) |
-| **Namespace** | Logische Trennung von Ressourcen im Cluster |
-| **Node** | Physische oder virtuelle Maschine im Cluster |
+| Approach | How | When to use |
+|----------|-----|-------------|
+| Imperative | `kubectl run nginx --image=nginx` | Quick experiments only |
+| Declarative | `kubectl apply -f deployment.yaml` | Everything in production |
 
-## Praxisaufgabe
+Declarative means: describe the desired state in a YAML file, and Kubernetes figures out how to reach it. The same `apply` command is idempotent — run it 10 times, same result.
 
-### Cluster-Komponenten erkunden
+## Pod Lifecycle
+
+```
+Pending → Running → Succeeded/Failed
+```
+
+- **Pending:** Pod is accepted, waiting for scheduling or image pull
+- **Running:** All containers started, at least one is running
+- **Succeeded:** All containers exited with code 0 (Jobs)
+- **Failed:** At least one container exited with non-zero code
+- **CrashLoopBackOff:** Container crashes repeatedly — Kubernetes backs off and retries
+
+## Hands-On Task
 
 ```bash
-# Alle System-Pods anzeigen (hier laufen die K8s-Komponenten)
+# Explore cluster components
+kubectl get nodes
 kubectl get pods -n kube-system
+kubectl describe node <node-name>
 
-# Nodes anzeigen
-kubectl get nodes -o wide
+# Create your first Pod declaratively
+kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hello-pod
+spec:
+  containers:
+  - name: hello
+    image: nginx:1.27-alpine
+EOF
 
-# Cluster-Info
-kubectl cluster-info
+kubectl get pod hello-pod
+kubectl describe pod hello-pod
+kubectl delete pod hello-pod
 ```
 
-### Ersten Pod manuell starten
+## Common Mistakes
 
-```bash
-# Imperativ (gut zum Lernen, nicht für Produktion)
-kubectl run mein-erster-pod --image=nginx:1.27-alpine
-
-# Pod anzeigen
-kubectl get pods
-kubectl describe pod mein-erster-pod
-kubectl logs mein-erster-pod
-
-# Pod löschen
-kubectl delete pod mein-erster-pod
-```
-
-## Typische Fehler
-
-- **Imperativ vs. Deklarativ verwechseln:** In Produktion sollte man immer deklarativ mit YAML-Manifesten arbeiten, nicht mit `kubectl run`. `kubectl run` ist ein Lern- und Debugging-Tool.
-- **etcd als Datenbank nutzen:** etcd ist für den Kubernetes-Cluster-Zustand, nicht für App-Daten.
-- **Alle Ressourcen im default-Namespace:** In realen Clustern nutzt man Namespaces zur Trennung von Teams/Umgebungen.
+- **Mixing imperative and declarative:** Pick declarative. Imperative commands leave no record and can't be version-controlled.
+- **Working in the default namespace for everything:** Create dedicated namespaces to keep things organized.
+- **Confusing nodes and pods:** Nodes are machines; Pods are workloads running on those machines.
 
 ## Checkpoint
 
-Du hast das Modul verstanden, wenn du folgende Fragen beantworten kannst:
-- [ ] Was ist der Unterschied zwischen deklarativem und imperativem Ansatz?
-- [ ] Was passiert, wenn du einen Pod löscht, der von einem Deployment verwaltet wird?
-- [ ] Welche Komponente entscheidet, auf welchem Node ein Pod gestartet wird?
-- [ ] Warum gibt es etcd, und was passiert, wenn es ausfällt?
+- [ ] What are the four main control plane components and what does each do?
+- [ ] What is etcd used for?
+- [ ] What is the difference between declarative and imperative configuration?
+- [ ] What does `kubectl apply` do that `kubectl create` does not?
 
 ## Definition of Done
 
-Du bist mit diesem Modul fertig, wenn du:
+You are done with this module when you:
 
-- [ ] die Hauptkomponenten des Control Plane (API Server, etcd, Scheduler, Controller Manager) benennen und ihre Aufgabe erklären kannst
-- [ ] den Unterschied zwischen deklarativem und imperativem Ansatz erklären kannst
-- [ ] einen Pod manuell gestartet, seine Logs gelesen und in ihn exec'ed hast
-- [ ] weißt, was passiert wenn du einen Pod löscht, der von einem Deployment verwaltet wird
-- [ ] alle Checkpoint-Fragen beantworten kannst
+- [ ] Can name and explain all control plane components
+- [ ] Can explain the Pod lifecycle states
+- [ ] Have created a Pod declaratively and verified it is Running
+- [ ] Can explain why declarative configuration is preferred
+- [ ] Can answer all checkpoint questions
 
-## Weiterführende Links
+## Further Reading
 
-- [Kubernetes Architektur](https://kubernetes.io/docs/concepts/architecture/)
-- [Kubernetes Komponenten](https://kubernetes.io/docs/concepts/overview/components/)
-- [Kubernetes Objects](https://kubernetes.io/docs/concepts/overview/working-with-objects/)
+- [Kubernetes Components](https://kubernetes.io/docs/concepts/overview/components/)
+- [Understanding Kubernetes Objects](https://kubernetes.io/docs/concepts/overview/working-with-objects/)
+- [Pod Lifecycle](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/)

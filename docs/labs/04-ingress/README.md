@@ -1,48 +1,37 @@
-# Lab 04 – Ingress lokal testen
+# Lab 04 – Ingress
 
-## Was du baust
+## What you'll build
 
-Du installierst einen nginx Ingress Controller und routest HTTP-Traffic zu zwei verschiedenen Services über Host-basiertes Routing. Beide Apps sind über separate Domains (`app-a.local`, `app-b.local`) erreichbar.
+A kind cluster with port-mapping, two nginx Deployments with Services, a nginx Ingress Controller, and an Ingress resource that routes by hostname: `app-a.local` → Service A, `app-b.local` → Service B.
 
-**Kubernetes-Objekte:** Deployment (×2), Service (×2), Ingress, Ingress Controller
+**Kubernetes objects used:** Deployment, Service, Ingress, Namespace (ingress-nginx)
 
-```text
-Browser / curl
-      │
-      ▼
-localhost:80 (Port-Mapping in kind)
-      │
-      ▼
-Ingress Controller (nginx)
-      │
-      ├── app-a.local ──► Service: service-a ──► Pod app-a (nginx)
-      │
-      └── app-b.local ──► Service: service-b ──► Pod app-b (nginx)
+```
+Browser
+  │
+  └── localhost:8080 (kind port-mapping)
+        └── ingress-nginx controller (port 80)
+              ├── app-a.local → Service app-a → Pods
+              └── app-b.local → Service app-b → Pods
 ```
 
-## Ziel
+## Goal
 
-Zwei verschiedene nginx-Apps sind über unterschiedliche Hostnames via Ingress erreichbar. Du hast Host-basiertes Routing erfolgreich konfiguriert.
+Two applications accessible at different hostnames via the same Ingress Controller port, verified with curl.
 
-## Voraussetzungen
+## Prerequisites
 
-- [ ] kind-Cluster läuft
-- [ ] kubectl konfiguriert
-- [ ] Für Port 80 Zugang: kind-Cluster **muss** mit Port-Mapping erstellt werden (siehe Schritt 1)
+- [ ] Docker running
+- [ ] kind and kubectl installed
 
-> [!IMPORTANT]
-> Dieses Lab erfordert einen kind-Cluster mit explizitem Port-Mapping auf Port 80. Falls dein Cluster ohne Port-Mapping läuft, musst du ihn neu erstellen.
+> **Important:** This lab requires a fresh kind cluster with port-mapping configured. The standard cluster from Lab 00 does not have port 80/443 mapped.
 
-## Schritt-für-Schritt
+## Step-by-Step
 
-### Schritt 1: kind-Cluster mit Port-Mapping erstellen
+### Step 1: Create a kind cluster with port-mapping
 
 ```bash
-# Bestehenden Cluster löschen (falls ohne Port-Mapping erstellt)
-kind delete cluster --name k8s-lernpfad
-
-# kind-ingress-config.yaml erstellen
-cat > /tmp/kind-ingress-config.yaml <<'EOF'
+cat <<EOF | kind create cluster --name ingress-lab --config=-
 kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 nodes:
@@ -55,178 +44,125 @@ nodes:
         node-labels: "ingress-ready=true"
   extraPortMappings:
   - containerPort: 80
-    hostPort: 80
+    hostPort: 8080
     protocol: TCP
   - containerPort: 443
-    hostPort: 443
+    hostPort: 8443
     protocol: TCP
 EOF
-
-kind create cluster --name k8s-lernpfad --config /tmp/kind-ingress-config.yaml
 ```
 
-Erwartete Ausgabe:
+Expected output:
 ```text
-Creating cluster "k8s-lernpfad" ...
+Creating cluster "ingress-lab" ...
  ✓ Ensuring node image ...
  ✓ Preparing nodes 📦
-Set kubectl context to "kind-k8s-lernpfad"
+ ✓ Writing configuration 📜
+ ✓ Starting control-plane 🕹️
+ ✓ Installing CNI 🔌
+ ✓ Installing StorageClass 💾
 ```
 
-### Schritt 2: Nginx Ingress Controller installieren
+### Step 2: Install the nginx Ingress Controller
 
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
-```
 
-Auf den Controller warten:
-```bash
 kubectl wait --namespace ingress-nginx \
   --for=condition=ready pod \
   --selector=app.kubernetes.io/component=controller \
   --timeout=90s
 ```
 
-Erwartete Ausgabe:
+Expected output:
 ```text
-pod/ingress-nginx-controller-xxxxxxxxx-xxxxx condition met
+pod/ingress-nginx-controller-... condition met
 ```
 
-```bash
-kubectl get pods -n ingress-nginx
-```
-
-Erwartete Ausgabe:
-```text
-NAME                                        READY   STATUS      RESTARTS   AGE
-ingress-nginx-admission-create-xxxxx        0/1     Completed   0          2m
-ingress-nginx-controller-xxxxxxxxx-xxxxx    1/1     Running     0          2m
-```
-
-### Schritt 3: Test-Deployments und Services erstellen
+### Step 3: Deploy two applications
 
 ```bash
 kubectl apply -f manifests/deployments.yaml
+kubectl get deployments
 ```
 
-Erwartete Ausgabe:
+Expected output:
 ```text
-deployment.apps/app-a created
-deployment.apps/app-b created
-service/service-a created
-service/service-b created
+NAME    READY   UP-TO-DATE   AVAILABLE   AGE
+app-a   1/1     1            1           15s
+app-b   1/1     1            1           15s
 ```
 
-```bash
-kubectl get deployments,services
-```
-
-Erwartete Ausgabe:
-```text
-NAME                    READY   UP-TO-DATE   AVAILABLE   AGE
-deployment.apps/app-a   2/2     2            2           30s
-deployment.apps/app-b   2/2     2            2           30s
-
-NAME                TYPE        CLUSTER-IP     PORT(S)   AGE
-service/kubernetes  ClusterIP   10.96.0.1      443/TCP   5m
-service/service-a   ClusterIP   10.96.x.y      80/TCP    30s
-service/service-b   ClusterIP   10.96.x.z      80/TCP    30s
-```
-
-### Schritt 4: Ingress erstellen
+### Step 4: Create the Ingress resource
 
 ```bash
 kubectl apply -f manifests/ingress.yaml
 kubectl get ingress
 ```
 
-Erwartete Ausgabe:
+Expected output (ADDRESS may take 30s to appear):
 ```text
-NAME            CLASS   HOSTS                     ADDRESS     PORTS   AGE
-lab04-ingress   nginx   app-a.local,app-b.local   localhost   80      15s
+NAME          CLASS   HOSTS                      ADDRESS     PORTS   AGE
+app-ingress   nginx   app-a.local,app-b.local    localhost   80      30s
 ```
+
+### Step 5: Add local DNS entries
 
 ```bash
-kubectl describe ingress lab04-ingress
+echo "127.0.0.1 app-a.local" | sudo tee -a /etc/hosts
+echo "127.0.0.1 app-b.local" | sudo tee -a /etc/hosts
 ```
 
-### Schritt 5: /etc/hosts konfigurieren
+> **Note:** These entries remain in `/etc/hosts` after the lab. Remove them manually or during cleanup.
+
+### Step 6: Test the routing
 
 ```bash
-# Einträge hinzufügen (nur für lokale Tests!)
-echo "127.0.0.1 app-a.local app-b.local" | sudo tee -a /etc/hosts
+curl http://app-a.local:8080
+curl http://app-b.local:8080
 ```
 
-> [!NOTE]
-> Diese Einträge sind nur für lokales Testen gedacht. Entferne sie nach dem Lab (Cleanup-Abschnitt).
-
-### Schritt 6: Routing testen
-
-```bash
-# App A über Host-basiertes Routing
-curl -s http://app-a.local | grep -o "<title>.*</title>"
-```
-
-Erwartete Ausgabe:
+Expected output (each showing its app name in the response):
 ```text
-<title>Welcome to nginx!</title>
+# app-a.local → response from app-a
+# app-b.local → response from app-b
 ```
+
+## Validation
 
 ```bash
-# App B über Host-basiertes Routing
-curl -s http://app-b.local | grep -o "<title>.*</title>"
-```
+kubectl describe ingress app-ingress
+# Should show both hosts and their backend services
 
-Erwartete Ausgabe:
-```text
-<title>Welcome to nginx!</title>
-```
-
-## Validierung
-
-```bash
-# Ingress Controller läuft
-kubectl get pods -n ingress-nginx
-
-# Ingress-Objekt ist konfiguriert und hat ADDRESS
-kubectl get ingress lab04-ingress
-
-# Ingress Controller Logs (letzte Requests)
-kubectl logs -n ingress-nginx \
-  deployment/ingress-nginx-controller \
-  --tail=10
-```
-
-Erwartete Log-Einträge nach dem curl-Test (Auszug):
-```text
-... 127.0.0.1 - - "GET / HTTP/1.1" 200 615 ...
-```
-
-```bash
-# Services erreichbar
-kubectl get endpoints service-a service-b
+kubectl logs -n ingress-nginx deployment/ingress-nginx-controller | tail -5
+# Should show 200 OK responses for your curl requests
 ```
 
 ## Cleanup
 
 ```bash
-# Kubernetes-Ressourcen löschen
-kubectl delete -f manifests/
+# Remove /etc/hosts entries
+sudo sed -i '' '/app-a.local/d' /etc/hosts
+sudo sed -i '' '/app-b.local/d' /etc/hosts
 
-# /etc/hosts Einträge entfernen
-# macOS/Linux:
-sudo sed -i '' '/app-a.local/d' /etc/hosts 2>/dev/null || \
-  sudo sed -i '/app-a.local/d' /etc/hosts
-
-# Ingress Controller entfernen (optional)
-kubectl delete namespace ingress-nginx
+# Delete the cluster
+kind delete cluster --name ingress-lab
 ```
 
-> [!CAUTION]
-> Das Löschen des Namespaces `ingress-nginx` entfernt den Ingress Controller vollständig. Andere Labs brauchen keinen Ingress Controller, daher ist das hier in Ordnung.
+> **Caution:** `kind delete cluster` deletes all resources in the cluster permanently.
 
-## Erweiterungsaufgabe
+## Extension Task
 
-1. Füge TLS hinzu: Erstelle ein selbst-signiertes Zertifikat mit `openssl`, speichere es als `kubernetes.io/tls` Secret und füge `spec.tls` zum Ingress hinzu.
-2. Konfiguriere Rate-Limiting: Füge die Annotation `nginx.ingress.kubernetes.io/limit-rps: "5"` hinzu und teste mit einer Schleife (`for i in {1..20}; do curl -s -o /dev/null -w "%{http_code}\n" http://app-a.local; done`).
-3. Füge ein drittes Deployment hinzu und route `app-a.local/v2` zu ihm (Path-basiertes Routing).
+Add TLS to the Ingress using a self-signed certificate:
+
+```bash
+# Generate a self-signed certificate
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout tls.key -out tls.crt \
+  -subj "/CN=app-a.local"
+
+# Create a TLS Secret
+kubectl create secret tls app-a-tls --cert=tls.crt --key=tls.key
+```
+
+Then add a `tls:` section to your Ingress and test with `curl -k https://app-a.local:8443`.

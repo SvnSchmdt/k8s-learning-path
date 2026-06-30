@@ -1,120 +1,76 @@
-# Modul 10 – Helm & Kustomize
+# Module 10 – Helm & Kustomize
 
-## Ziel des Moduls
+## Goal
 
-Nach diesem Modul kannst du Helm-Charts installieren, aktualisieren und eigene Charts erstellen. Du verstehst Kustomize als Alternative und weißt, wann du welches Tool verwendest.
+After this module you can install Helm Charts, create your own charts, and understand Kustomize as an alternative approach. You know when to use which tool.
 
-## Warum ist das wichtig?
+## Why does this matter?
 
-Reale Anwendungen bestehen aus vielen YAML-Dateien. Wenn du 10 Deployments, 10 Services und 10 ConfigMaps hast, willst du nicht jede Datei manuell anpassen. Helm und Kustomize lösen dieses Problem auf unterschiedliche Weisen.
+Real applications consist of many YAML files. When you have 10 Deployments, 10 Services, and 10 ConfigMaps, you don't want to manually edit each file for every environment. Helm and Kustomize solve this problem in different ways.
 
-## Kernkonzepte
+## Key Concepts
 
 ### Helm
 
-- **Chart:** Ein Paket mit allen Kubernetes-Ressourcen für eine Anwendung. Enthält Templates, Default-Values und Metadaten.
-- **Release:** Eine installierte Instanz eines Charts in einem Cluster.
-- **Values:** Konfiguration, die Template-Variablen überschreibt. Ermöglicht, denselben Chart für verschiedene Umgebungen zu nutzen.
-- **Repository:** Sammlung von Helm Charts (z.B. Artifact Hub).
-- **Chart.yaml:** Metadaten-Datei eines Charts (Name, Version, Beschreibung).
+- **Chart:** A package containing all Kubernetes resources for an application — templates, default values, and metadata.
+- **Release:** An installed instance of a Chart in a cluster.
+- **Values:** Configuration that overrides template variables. Enables the same Chart to be used across multiple environments.
+- **Repository:** A collection of Helm Charts (e.g., Artifact Hub).
+- **Chart.yaml:** Metadata file for a Chart (name, version, description).
 
 ### Kustomize
 
-- **Base:** Basis-YAML-Dateien, die für alle Umgebungen gelten.
-- **Overlay:** Umgebungsspezifische Änderungen (patches), die auf die Base angewendet werden.
-- **kustomization.yaml:** Steuert, was zusammengefügt wird und welche Patches angewendet werden.
+- **Base:** Base YAML files that apply to all environments.
+- **Overlay:** Environment-specific changes (patches) applied on top of the base.
+- **kustomization.yaml:** Controls what is merged and which patches are applied.
 
-## Praxisaufgabe: Helm
+## Hands-On Task: Helm
 
-### Helm installieren
+### Install Helm
 
 ```bash
 # macOS
 brew install helm
-
-# Prüfen
 helm version
 ```
 
-### Chart aus Repository installieren
+### Install a Chart from a repository
 
 ```bash
-# Repository hinzufügen
 helm repo add bitnami https://charts.bitnami.com/bitnami
 helm repo update
 
-# Verfügbare Charts suchen
 helm search repo nginx
 
-# Chart installieren
-helm install mein-nginx bitnami/nginx --namespace demo --create-namespace
-
-# Alle Releases anzeigen
+helm install my-nginx bitnami/nginx --namespace demo --create-namespace
 helm list -A
-
-# Release-Details
-helm status mein-nginx -n demo
+helm status my-nginx -n demo
 ```
 
-### Mit Values arbeiten
+### Working with values
 
 ```bash
-# Values einsehen
+# View default values
 helm show values bitnami/nginx
 
-# Beim Installieren überschreiben
-helm install mein-nginx bitnami/nginx \
+# Override at install time
+helm install my-nginx bitnami/nginx \
   --set replicaCount=2 \
   --set service.type=NodePort
 
-# Mit values.yaml
-helm install mein-nginx bitnami/nginx -f eigene-values.yaml
+# Use a values file
+helm install my-nginx bitnami/nginx -f my-values.yaml
 ```
 
-### Upgrade und Rollback
+### Upgrade and rollback
 
 ```bash
-helm upgrade mein-nginx bitnami/nginx --set replicaCount=3
-helm rollback mein-nginx 1
-helm uninstall mein-nginx -n demo
+helm upgrade my-nginx bitnami/nginx --set replicaCount=3
+helm rollback my-nginx 1
+helm uninstall my-nginx -n demo
 ```
 
-## Praxisaufgabe: Eigenes Chart
-
-```bash
-# Chart-Skelett erstellen
-helm create meine-app
-
-# Struktur:
-# meine-app/
-# ├── Chart.yaml
-# ├── values.yaml
-# └── templates/
-#     ├── deployment.yaml
-#     ├── service.yaml
-#     └── _helpers.tpl
-
-# Chart lokal rendern (ohne Installation)
-helm template meine-app ./meine-app
-
-# Chart installieren
-helm install meine-app ./meine-app
-```
-
-## Praxisaufgabe: Kustomize
-
-```
-k8s/
-├── base/
-│   ├── deployment.yaml
-│   ├── service.yaml
-│   └── kustomization.yaml
-└── overlays/
-    ├── dev/
-    │   └── kustomization.yaml
-    └── prod/
-        └── kustomization.yaml
-```
+## Hands-On Task: Kustomize
 
 ```yaml
 # base/kustomization.yaml
@@ -138,55 +94,51 @@ patches:
       value: 5
   target:
     kind: Deployment
-    name: meine-app
+    name: my-app
 ```
 
 ```bash
-# Kustomize anwenden (kubectl integriert)
 kubectl apply -k overlays/prod/
-
-# Nur ausgeben, nicht anwenden
-kubectl kustomize overlays/prod/
+kubectl kustomize overlays/prod/   # preview without applying
 ```
 
 ## Helm vs. Kustomize
 
-| Merkmal | Helm | Kustomize |
+| Feature | Helm | Kustomize |
 |---------|------|-----------|
-| Templating | Go-Templates mit Values | Patch-basiert, kein Templating |
-| Packages | Charts aus Repositories | Keine Packages |
-| Komplexität | Höher | Niedriger |
-| Kubernetes-nativ | Externes Tool | In kubectl integriert |
-| Ideal für | Externe Software deployen | Eigene Apps konfigurieren |
+| Templating | Go templates with values | Patch-based, no templating |
+| Packages | Charts from repositories | No packages |
+| Complexity | Higher | Lower |
+| Kubernetes-native | External tool | Built into kubectl |
+| Best for | Deploying external software | Configuring your own apps |
 
-## Typische Fehler
+## Common Mistakes
 
-- **Helm-Release löscht Ressourcen nicht vollständig:** `helm uninstall` löscht normalerweise alles. Prüfen mit `kubectl get all`.
-- **Values werden nicht übernommen:** Pfad in `--set` falsch oder Values-Datei enthält Syntaxfehler.
-- **Kustomize Patch-Target stimmt nicht:** Der Patch findet keine Ressource. Name/Kind im target prüfen.
+- **helm uninstall doesn't clean up everything:** Usually it does. Verify with `kubectl get all`. Some CRDs may remain.
+- **Values not applied:** Wrong path in `--set` or syntax error in values file.
+- **Kustomize patch target not matching:** The patch finds no resource. Check name/kind in the `target` field.
 
 ## Checkpoint
 
-Du hast das Modul verstanden, wenn du folgende Fragen beantworten kannst:
-- [ ] Was ist ein Helm Chart und was enthält er?
-- [ ] Wie installierst du eine spezifische Chart-Version mit bestimmten Values?
-- [ ] Was ist der Unterschied zwischen `helm install` und `helm upgrade`?
-- [ ] Was macht Kustomize anders als Helm?
-- [ ] Wann würdest du Helm bevorzugen, wann Kustomize?
+- [ ] What is a Helm Chart and what does it contain?
+- [ ] How do you install a specific Chart version with custom values?
+- [ ] What is the difference between `helm install` and `helm upgrade`?
+- [ ] What does Kustomize do differently than Helm?
+- [ ] When would you prefer Helm over Kustomize?
 
 ## Definition of Done
 
-Du bist mit diesem Modul fertig, wenn du:
+You are done with this module when you:
 
-- [ ] einen Chart aus einem Helm-Repository installiert und mit `--set` konfiguriert hast
-- [ ] ein eigenes Helm Chart erstellt und installiert hast
-- [ ] einen Helm Upgrade und Rollback durchgeführt hast
-- [ ] den Unterschied zwischen Helm und Kustomize erklären und wann du welches nutzt
-- [ ] alle Checkpoint-Fragen beantworten kannst
+- [ ] Have installed a Chart from a Helm repository and configured it with `--set`
+- [ ] Have created and installed your own Helm Chart
+- [ ] Have performed a Helm upgrade and rollback
+- [ ] Can explain the difference between Helm and Kustomize and when to use each
+- [ ] Can answer all checkpoint questions
 
-## Weiterführende Links
+## Further Reading
 
-- [Helm Dokumentation](https://helm.sh/docs/)
-- [Artifact Hub (Chart Repository)](https://artifacthub.io/)
-- [Kustomize Dokumentation](https://kustomize.io/)
+- [Helm Documentation](https://helm.sh/docs/)
+- [Artifact Hub](https://artifacthub.io/)
+- [Kustomize Documentation](https://kustomize.io/)
 - [Kustomize in kubectl](https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/)

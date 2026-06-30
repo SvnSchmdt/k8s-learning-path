@@ -1,185 +1,116 @@
-# Lab 03 – ConfigMaps & Secrets verwenden
+# Lab 03 – Config & Secrets
 
-## Was du baust
+## What you'll build
 
-Du bindest externe Konfiguration sicher in einen Pod ein: einmal als Umgebungsvariable (für einzelne Werte) und einmal als gemountetes Volume (für Konfigurationsdateien). Ein Secret wird ebenfalls als Umgebungsvariable bereitgestellt.
+A ConfigMap and a Secret, injected into a Pod — both as environment variables and as mounted files. You will verify the values inside the running container and observe the update behavior.
 
-**Kubernetes-Objekte:** ConfigMap, Secret (Opaque), Pod
+**Kubernetes objects used:** ConfigMap, Secret, Pod
 
-```text
-ConfigMap: app-config
-    ├── Env-Variable APP_ENV  ──────┐
-    ├── Env-Variable LOG_LEVEL ─────┤──► Pod: config-demo
-    └── Volume: /etc/config/ ───────┘         │
-                                               └── env | grep APP_
-Secret: app-secret
-    └── Env-Variable API_KEY ──────────────────────► Pod: config-demo
+```
+ConfigMap (app-config)  ──env──┐
+                               ├──► Pod (app-pod)
+Secret (db-credentials) ──env──┘
+         │
+         └──volume──► /etc/config/ (mounted files)
 ```
 
-## Ziel
+## Goal
 
-Ein Pod läuft mit Konfiguration aus einer ConfigMap (als Env-Variable und als Datei) sowie einem Secret (als Env-Variable). Du hast die Werte im Pod verifiziert.
+A running Pod that receives configuration from a ConfigMap and a Secret, verifiable from inside the container.
 
-## Voraussetzungen
+## Prerequisites
 
-- [ ] kind-Cluster läuft
-- [ ] kubectl konfiguriert
+- [ ] kind cluster running
+- [ ] kubectl configured
 
-## Schritt-für-Schritt
+## Step-by-Step
 
-### Schritt 1: ConfigMap erstellen
+### Step 1: Create the ConfigMap
 
 ```bash
 kubectl apply -f manifests/configmap.yaml
-kubectl get configmap app-config
-```
-
-Erwartete Ausgabe:
-```text
-NAME         DATA   AGE
-app-config   3      5s
-```
-
-```bash
 kubectl describe configmap app-config
 ```
 
-Erwartete Ausgabe (Auszug):
+Expected output:
 ```text
 Name:         app-config
 Namespace:    default
 Data
 ====
-APP_ENV:     8 bytes
-LOG_LEVEL:   4 bytes
-app.properties:
-----
-server.port=8080
-feature.x=true
+APP_PORT:  8080
+LOG_LEVEL: debug
 ```
 
-### Schritt 2: Secret erstellen
-
-> [!WARNING]
-> Die Datei `manifests/secret.yaml` enthält ausschließlich Dummy-Werte. Committen von echten Secrets in Git-Repositories ist ein kritisches Sicherheitsrisiko.
+### Step 2: Create the Secret
 
 ```bash
-kubectl apply -f manifests/secret.yaml
-kubectl get secret app-secret
+kubectl apply -f manifests/
 ```
 
-Erwartete Ausgabe:
-```text
-NAME         TYPE     DATA   AGE
-app-secret   Opaque   2      5s
-```
+> **Warning:** `manifests/secret.yaml` contains dummy values only and is safe to commit. Never commit real passwords, tokens, or API keys.
 
 ```bash
-# Secret-Wert (Base64-dekodiert) prüfen – nur zur Verifikation
-kubectl get secret app-secret -o jsonpath='{.data.api-key}' | base64 -d && echo
+kubectl get secret db-credentials
 ```
 
-Erwartete Ausgabe:
+Expected output:
 ```text
-mein-api-key-dummy
+NAME             TYPE     DATA   AGE
+db-credentials   Opaque   2      5s
 ```
 
-### Schritt 3: Pod starten
+Secret values are stored base64-encoded:
+```bash
+kubectl get secret db-credentials -o jsonpath='{.data.DB_PASSWORD}' | base64 -d
+```
+
+### Step 3: Start the Pod with injected config
 
 ```bash
 kubectl apply -f manifests/pod-with-config.yaml
-kubectl get pod config-demo
+kubectl get pod app-pod
 ```
 
-Erwartete Ausgabe:
+Expected output:
 ```text
-NAME          READY   STATUS    RESTARTS   AGE
-config-demo   1/1     Running   0          15s
+NAME      READY   STATUS    RESTARTS   AGE
+app-pod   1/1     Running   0          15s
 ```
 
-### Schritt 4: Env-Variablen im Pod prüfen
+### Step 4: Verify environment variables inside the container
 
 ```bash
-kubectl exec -it config-demo -- env | grep -E "APP_|LOG_|API_"
+kubectl exec app-pod -- env | grep -E "LOG_LEVEL|APP_PORT|DB_"
 ```
 
-Erwartete Ausgabe:
+Expected output:
 ```text
-APP_ENV=produktion
-LOG_LEVEL=info
-API_KEY=mein-api-key-dummy
+LOG_LEVEL=debug
+APP_PORT=8080
+DB_USER=admin
+DB_PASSWORD=supersecret
 ```
 
-### Schritt 5: Gemountete Dateien prüfen
+### Step 5: Verify volume-mounted files
 
 ```bash
-kubectl exec -it config-demo -- ls /etc/config/
+kubectl exec app-pod -- ls /etc/config/
+kubectl exec app-pod -- cat /etc/config/LOG_LEVEL
 ```
 
-Erwartete Ausgabe:
+Expected output:
 ```text
-app.properties
+APP_PORT
+LOG_LEVEL
+debug
 ```
+
+## Validation
 
 ```bash
-kubectl exec -it config-demo -- cat /etc/config/app.properties
-```
-
-Erwartete Ausgabe:
-```text
-server.port=8080
-feature.x=true
-```
-
-### Schritt 6: ConfigMap-Update beobachten
-
-```bash
-# ConfigMap ändern
-kubectl patch configmap app-config \
-  --type merge \
-  -p '{"data":{"LOG_LEVEL":"debug"}}'
-```
-
-Erwartete Ausgabe:
-```text
-configmap/app-config patched
-```
-
-```bash
-# Env-Variable: ändert sich NICHT ohne Pod-Neustart
-kubectl exec -it config-demo -- env | grep LOG_LEVEL
-```
-
-Erwartete Ausgabe:
-```text
-LOG_LEVEL=info
-```
-
-```bash
-# Volume-Mount: wird nach ~60 Sekunden aktualisiert (warte kurz)
-sleep 65
-kubectl exec -it config-demo -- cat /etc/config/app.properties
-```
-
-> [!NOTE]
-> Env-Variablen aus ConfigMaps werden nur beim Pod-Start gesetzt. Änderungen an der ConfigMap erfordern einen Pod-Neustart. Volume-Mounts hingegen werden vom kubelet periodisch aktualisiert (Standard: ~1 Minute).
-
-## Validierung
-
-```bash
-# Pod läuft
-kubectl get pod config-demo
-
-# Alle Env-Variablen anzeigen
-kubectl exec -it config-demo -- env | sort
-
-# Gemountete Dateien anzeigen
-kubectl exec -it config-demo -- find /etc/config -type f
-```
-
-Erwartete Ausgabe:
-```text
-/etc/config/app.properties
+kubectl describe pod app-pod | grep -A5 "Environment"
+# Should list LOG_LEVEL, APP_PORT from ConfigMap, DB_PASSWORD from Secret
 ```
 
 ## Cleanup
@@ -188,15 +119,18 @@ Erwartete Ausgabe:
 kubectl delete -f manifests/
 ```
 
-Erwartete Ausgabe:
-```text
-configmap "app-config" deleted
-secret "app-secret" deleted
-pod "config-demo" deleted
+## Extension Task
+
+Update the ConfigMap while the Pod is running:
+
+```bash
+kubectl patch configmap app-config --patch '{"data":{"LOG_LEVEL":"info"}}'
+
+# Check the volume-mounted file (updates automatically within ~60s)
+kubectl exec app-pod -- cat /etc/config/LOG_LEVEL
+
+# Check the environment variable (does NOT update — requires Pod restart)
+kubectl exec app-pod -- env | grep LOG_LEVEL
 ```
 
-## Erweiterungsaufgabe
-
-1. Erstelle ein zweites Secret vom Typ `kubernetes.io/tls`. Du kannst ein selbst-signiertes Zertifikat mit `openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout tls.key -out tls.crt -subj "/CN=test"` erstellen und als Secret speichern.
-2. Ändere den Pod so, dass das Secret als Datei unter `/etc/secrets/` eingebunden wird (statt als Env-Variable). Verifiziere den Mount.
-3. Was passiert, wenn du einen Key aus der ConfigMap entfernst, der als Env-Variable referenziert wird, und den Pod neu startest?
+This demonstrates the key difference between volume mounts (live updates) and environment variables (set at Pod start).

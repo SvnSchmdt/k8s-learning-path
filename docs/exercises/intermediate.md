@@ -1,219 +1,217 @@
-# Intermediate-Übungen
+# Intermediate Exercises
 
-## Übung 1: Multi-Container Pod
+Work through these exercises after completing Modules 05–10 (Phases 4–6). They assume a running kind cluster and familiarity with Deployments and Services.
 
-**Aufgabe:** Erstelle einen Pod mit zwei Containern:
-- Container 1: `nginx:1.27-alpine`, hört auf Port 80
-- Container 2: `busybox:1.36`, der alle 10 Sekunden `wget -qO- localhost` ausführt und das Ergebnis in `/shared/log.txt` schreibt
-- Beide Container teilen ein `emptyDir`-Volume unter `/shared`
+---
 
-Prüfe nach dem Start die Log-Datei im busybox-Container.
+## Exercise 1 — RBAC: Restrict a ServiceAccount
+
+**Task:** Create a namespace `restricted`. Create a ServiceAccount `reader` in that namespace. Grant it permission to `list` and `get` Pods — but not Deployments or Secrets. Verify with `kubectl auth can-i`.
 
 <details>
-<summary>Lösung anzeigen</summary>
+<summary>Solution</summary>
 
-```yaml
-apiVersion: v1
-kind: Pod
+```bash
+kubectl create namespace restricted
+kubectl create serviceaccount reader -n restricted
+
+kubectl apply -f - <<EOF
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
 metadata:
-  name: multi-container
-spec:
-  volumes:
-  - name: shared
-    emptyDir: {}
-  containers:
-  - name: nginx
-    image: nginx:1.27-alpine
-    ports:
-    - containerPort: 80
-    volumeMounts:
-    - name: shared
-      mountPath: /shared
-  - name: logger
-    image: busybox:1.36
-    command:
-    - sh
-    - -c
-    - |
-      while true; do
-        wget -qO- localhost >> /shared/log.txt 2>&1
-        sleep 10
-      done
-    volumeMounts:
-    - name: shared
-      mountPath: /shared
+  name: pod-reader
+  namespace: restricted
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]
+EOF
+
+kubectl apply -f - <<EOF
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: reader-binding
+  namespace: restricted
+subjects:
+- kind: ServiceAccount
+  name: reader
+  namespace: restricted
+roleRef:
+  kind: Role
+  name: pod-reader
+  apiGroup: rbac.authorization.k8s.io
+EOF
+
+# Verify
+kubectl auth can-i list pods -n restricted \
+  --as=system:serviceaccount:restricted:reader
+# yes
+
+kubectl auth can-i list deployments -n restricted \
+  --as=system:serviceaccount:restricted:reader
+# no
 ```
 
-```bash
-kubectl apply -f multi-container.yaml
-kubectl exec -it multi-container -c logger -- cat /shared/log.txt
-```
 </details>
 
 ---
 
-## Übung 2: RBAC einrichten
+## Exercise 2 — Storage: Persist Data Across Pod Restarts
 
-**Aufgabe:** 
-1. Erstelle einen ServiceAccount `leser` im Namespace `default`
-2. Erstelle eine Role `pod-leser`, die nur `get`, `list` und `watch` auf Pods erlaubt
-3. Binde die Role an den ServiceAccount
-4. Teste, ob der ServiceAccount Pods listen kann, aber keine Deployments löschen kann
+**Task:** Create a PVC named `data-pvc` (1Gi, ReadWriteOnce). Deploy a Pod that mounts it at `/data`. Write a file to `/data/hello.txt`. Delete the Pod. Create a new Pod with the same PVC and verify the file still exists.
 
 <details>
-<summary>Lösung anzeigen</summary>
+<summary>Solution</summary>
 
 ```bash
-kubectl create serviceaccount leser
-
-kubectl create role pod-leser \
-  --verb=get,list,watch \
-  --resource=pods
-
-kubectl create rolebinding pod-leser-binding \
-  --role=pod-leser \
-  --serviceaccount=default:leser
-
-kubectl auth can-i list pods --as=system:serviceaccount:default:leser
-# -> yes
-
-kubectl auth can-i delete deployments --as=system:serviceaccount:default:leser
-# -> no
-```
-</details>
-
----
-
-## Übung 3: PersistentVolumeClaim
-
-**Aufgabe:** 
-1. Erstelle einen PVC `daten-pvc` mit 500Mi und AccessMode `ReadWriteOnce`
-2. Starte einen Pod, der diesen PVC unter `/daten` mountet
-3. Schreibe eine Datei in `/daten/test.txt`
-4. Lösche den Pod, starte ihn neu (neuer Pod, gleicher PVC)
-5. Prüfe, ob die Datei noch vorhanden ist
-
-<details>
-<summary>Lösung anzeigen</summary>
-
-```yaml
-# pvc.yaml
+kubectl apply -f - <<EOF
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: daten-pvc
+  name: data-pvc
 spec:
-  accessModes:
-  - ReadWriteOnce
+  accessModes: [ReadWriteOnce]
   resources:
     requests:
-      storage: 500Mi
----
-apiVersion: v1
-kind: Pod
-metadata:
-  name: daten-pod
-spec:
-  volumes:
-  - name: daten
-    persistentVolumeClaim:
-      claimName: daten-pvc
-  containers:
-  - name: app
-    image: busybox:1.36
-    command: ["sleep", "3600"]
-    volumeMounts:
-    - name: daten
-      mountPath: /daten
+      storage: 1Gi
+EOF
+
+kubectl run writer --image=busybox --restart=Never \
+  --overrides='{"spec":{"volumes":[{"name":"data","persistentVolumeClaim":{"claimName":"data-pvc"}}],"containers":[{"name":"writer","image":"busybox","command":["sh","-c","echo hello > /data/hello.txt && sleep 3600"],"volumeMounts":[{"name":"data","mountPath":"/data"}]}]}}'
+
+kubectl exec writer -- cat /data/hello.txt
+# hello
+
+kubectl delete pod writer
+
+kubectl run reader --image=busybox --restart=Never \
+  --overrides='{"spec":{"volumes":[{"name":"data","persistentVolumeClaim":{"claimName":"data-pvc"}}],"containers":[{"name":"reader","image":"busybox","command":["sleep","3600"],"volumeMounts":[{"name":"data","mountPath":"/data"}]}]}}'
+
+kubectl exec reader -- cat /data/hello.txt
+# hello  ← data persisted!
 ```
 
-```bash
-kubectl apply -f pvc.yaml
-kubectl exec -it daten-pod -- sh -c 'echo "test" > /daten/test.txt'
-kubectl delete pod daten-pod
-kubectl apply -f pvc.yaml  # Pod neu starten
-kubectl exec -it daten-pod -- cat /daten/test.txt
-# -> test
-```
 </details>
 
 ---
 
-## Übung 4: Resource Limits und OOMKilled simulieren
+## Exercise 3 — Ingress: Multi-Service Routing
 
-**Aufgabe:** Erstelle einen Pod mit einem sehr niedrigen Memory-Limit (z.B. `4Mi`). Starte einen Prozess im Pod, der mehr Memory verbraucht. Beobachte den OOMKilled-Status.
+**Task:** Deploy two applications (`app-a` and `app-b`) with Services. Create a single Ingress that routes `app-a.local/` to `app-a` and `app-b.local/` to `app-b`. Test both routes.
 
-**Hinweis:** Das ist intentional kaputt – du sollst beobachten, was passiert.
+*(Requires a kind cluster with port-mapping — see Lab 04)*
 
 <details>
-<summary>Lösung anzeigen</summary>
+<summary>Hint</summary>
+
+You need `ingressClassName: nginx` and two separate `rules` entries in the Ingress spec — one per host.
+
+</details>
+
+<details>
+<summary>Solution</summary>
 
 ```yaml
-apiVersion: v1
-kind: Pod
+apiVersion: networking.k8s.io/v1
+kind: Ingress
 metadata:
-  name: oom-test
+  name: multi-app
 spec:
-  containers:
-  - name: app
-    image: polinux/stress
-    command: ["stress"]
-    args: ["--vm", "1", "--vm-bytes", "50M"]
-    resources:
-      limits:
-        memory: "4Mi"
+  ingressClassName: nginx
+  rules:
+  - host: app-a.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: app-a
+            port:
+              number: 80
+  - host: app-b.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: app-b
+            port:
+              number: 80
 ```
 
-```bash
-kubectl apply -f oom.yaml
-kubectl get pod oom-test -w
-# STATUS: OOMKilled
-kubectl describe pod oom-test
-# Last State: Terminated, Reason: OOMKilled
-```
 </details>
 
 ---
 
-## Übung 5: Horizontal Pod Autoscaler
+## Exercise 4 — Helm: Custom Values File
 
-**Aufgabe:** 
-1. Stelle sicher, dass der Metrics Server läuft
-2. Erstelle ein Deployment `skalierbare-app` mit Resource Requests (`cpu: "100m"`)
-3. Erstelle einen HPA, der zwischen 2 und 8 Replicas skaliert, wenn CPU-Auslastung > 50%
-4. Beobachte den HPA-Status
+**Task:** Install the `bitnami/nginx` chart with a custom values file that sets `replicaCount: 3` and `service.type: ClusterIP`. Upgrade it to `replicaCount: 5`. Roll back to the previous version.
 
 <details>
-<summary>Lösung anzeigen</summary>
+<summary>Solution</summary>
+
+```yaml
+# values.yaml
+replicaCount: 3
+service:
+  type: ClusterIP
+```
 
 ```bash
-kubectl create deployment skalierbare-app \
-  --image=nginx:1.27-alpine \
-  --replicas=2
+helm repo add bitnami https://charts.bitnami.com/bitnami
+helm repo update
+helm install my-nginx bitnami/nginx -f values.yaml
 
-kubectl set resources deployment skalierbare-app \
-  --requests=cpu=100m,memory=32Mi
+helm upgrade my-nginx bitnami/nginx -f values.yaml --set replicaCount=5
+helm list
+helm history my-nginx
 
-kubectl autoscale deployment skalierbare-app \
-  --cpu-percent=50 \
-  --min=2 \
-  --max=8
-
-kubectl get hpa
-kubectl describe hpa skalierbare-app
+helm rollback my-nginx 1
+helm list
+# replica count should be back to 3
 ```
+
 </details>
 
 ---
 
-## Aufräumen
+## Exercise 5 — HPA: Autoscaling
+
+**Task:** Create a Deployment with CPU `requests: 100m`. Create an HPA targeting 50% CPU utilization, min 2, max 8 replicas. Describe what would happen if CPU rises above 50% of the request.
+
+<details>
+<summary>Solution</summary>
+
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: app-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: app
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 50
+```
 
 ```bash
-kubectl delete pod multi-container daten-pod oom-test --ignore-not-found
-kubectl delete pvc daten-pvc --ignore-not-found
-kubectl delete deployment skalierbare-app --ignore-not-found
-kubectl delete hpa skalierbare-app --ignore-not-found
-kubectl delete serviceaccount leser --ignore-not-found
-kubectl delete role pod-leser --ignore-not-found
-kubectl delete rolebinding pod-leser-binding --ignore-not-found
+kubectl apply -f hpa.yaml
+kubectl get hpa
+kubectl describe hpa app-hpa
 ```
+
+**Answer:** If average CPU across all Pods exceeds 50% of `100m` (i.e., > 50m per Pod), HPA adds replicas until average drops below 50%, up to a maximum of 8 replicas.
+
+</details>

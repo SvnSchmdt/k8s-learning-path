@@ -1,118 +1,95 @@
-# Modul 01 – Container Basics
+# Module 01 – Container Basics
 
-## Ziel des Moduls
+## Goal
 
-Nach diesem Modul verstehst du, was Container sind, wie sie sich von virtuellen Maschinen unterscheiden und wie der Lebenszyklus eines Containers aussieht. Du kannst Container-Images bauen und Container starten.
+After this module you understand the difference between images and containers, can build your own Docker image, and know the core Docker commands for day-to-day work.
 
-## Warum ist das wichtig?
+## Why does this matter?
 
-Kubernetes orchestriert Container. Ohne ein solides Verständnis davon, was ein Container ist und wie er funktioniert, bleibt Kubernetes eine Blackbox. Container sind die kleinste Einheit, die Kubernetes verwaltet – alles andere baut darauf auf.
+Kubernetes orchestrates containers. Before you can understand Kubernetes, you need to understand what a container is, how it differs from a virtual machine, and how images are built and stored. Every Pod in Kubernetes runs one or more containers.
 
-## Kernkonzepte
+## Key Concepts
 
-- **Container:** Ein Prozess, der isoliert vom Rest des Systems läuft – mit eigenem Dateisystem, Netzwerk-Namespace und begrenzten Ressourcen. Kein vollständiges Betriebssystem, kein Hypervisor.
-- **Container-Image:** Eine unveränderliche, schichtweise aufgebaute Vorlage, aus der Container gestartet werden. Gebaut mit einem `Dockerfile`.
-- **Container Registry:** Ein Speicherort für Images, z.B. Docker Hub, GitHub Container Registry oder ein privates Registry.
-- **Dockerfile:** Eine Textdatei mit Anweisungen, wie ein Image Schicht für Schicht aufgebaut wird.
-- **Container Runtime:** Die Software, die Container ausführt. In Kubernetes wird meist `containerd` oder `CRI-O` verwendet.
+- **Container image:** An immutable, layered package that contains everything needed to run an application — code, runtime, dependencies, and configuration. Images are built from a Dockerfile and stored in a registry.
+- **Container:** A running instance of an image. Containers are isolated processes on the host operating system. Multiple containers can run from the same image simultaneously.
+- **Dockerfile:** A text file with instructions for building an image (`FROM`, `RUN`, `COPY`, `CMD`, etc.).
+- **Registry:** A service for storing and distributing container images. Examples: Docker Hub, GitHub Container Registry, AWS ECR.
+- **Layer caching:** Each Dockerfile instruction creates a layer. Docker caches layers — unchanged layers are reused in subsequent builds.
 
-## Container vs. Virtuelle Maschine
+## Image vs. Container
 
-| Merkmal | Container | VM |
-|---------|-----------|-----|
-| Startet in | Millisekunden | Sekunden bis Minuten |
-| Betriebssystem | Teilt den Host-Kernel | Eigener Kernel |
-| Größe | MB | GB |
-| Isolation | Prozess-Level | Hardware-Level |
-| Overhead | Minimal | Hoch |
+```
+Dockerfile  →  docker build  →  Image  →  docker run  →  Container
+                                  ↓
+                              Registry (push/pull)
+```
 
-## Praxisaufgabe
+An image is like a class definition; a container is like an instance of that class.
 
-### Einfaches Image bauen und starten
+## Hands-On Task
 
-Erstelle ein `Dockerfile`:
+### Run your first container
+
+```bash
+docker run --rm nginx:1.27-alpine echo "Hello from container"
+```
+
+### Explore a running container
+
+```bash
+# Run nginx in background
+docker run -d --name my-nginx -p 8080:80 nginx:1.27-alpine
+
+# Check logs
+docker logs my-nginx
+
+# Execute a command inside
+docker exec -it my-nginx sh
+
+# Stop and remove
+docker stop my-nginx && docker rm my-nginx
+```
+
+### Build a custom image
 
 ```dockerfile
+# Dockerfile
 FROM nginx:1.27-alpine
 COPY index.html /usr/share/nginx/html/index.html
 ```
 
-Erstelle `index.html`:
-
-```html
-<!DOCTYPE html>
-<html><body><h1>Hallo Kubernetes!</h1></body></html>
-```
-
-Image bauen und starten:
-
 ```bash
-docker build -t mein-nginx:v1 .
-docker run -d -p 8080:80 --name mein-nginx mein-nginx:v1
+echo "<h1>My Kubernetes App</h1>" > index.html
+docker build -t my-app:v1 .
+docker run -d -p 8080:80 my-app:v1
 curl http://localhost:8080
 ```
 
-### Container-Lebenszyklus
+## Common Mistakes
 
-```bash
-# Container starten
-docker run -d --name demo nginx:1.27-alpine
-
-# Logs anzeigen
-docker logs demo
-
-# In Container exec'en
-docker exec -it demo sh
-
-# Container stoppen und löschen
-docker stop demo && docker rm demo
-```
-
-## Beispiel-Kommandos
-
-```bash
-# Images auflisten
-docker images
-
-# Laufende Container anzeigen
-docker ps
-
-# Alle Container (auch gestoppte)
-docker ps -a
-
-# Image aus Registry pullen
-docker pull nginx:1.27-alpine
-
-# Container-Details anzeigen
-docker inspect mein-nginx
-```
-
-## Typische Fehler
-
-- **Port bereits belegt:** `docker run -p 8080:80` schlägt fehl, wenn Port 8080 schon benutzt wird. Lösung: anderen Port wählen.
-- **`latest`-Tag nutzen:** `nginx:latest` ist eine schlechte Praxis in Produktion – die Version ändert sich unbemerkt. Immer spezifische Versionen nutzen.
-- **Container startet und stoppt sofort:** Der Hauptprozess im Container ist beendet. `docker logs <name>` zeigt warum.
+- **`latest` tag in production:** Always use specific image tags (e.g., `nginx:1.27-alpine`). `latest` is unpredictable and makes debugging harder.
+- **Large images:** Don't install unnecessary packages. Use Alpine-based images where possible.
+- **Processes running as root:** Containers should run as non-root users. Use the `USER` instruction in your Dockerfile.
 
 ## Checkpoint
 
-Du hast das Modul verstanden, wenn du folgende Fragen beantworten kannst:
-- [ ] Was ist der Unterschied zwischen einem Container-Image und einem laufenden Container?
-- [ ] Warum startet ein Container schneller als eine VM?
-- [ ] Was passiert mit einem Container, wenn sein Hauptprozess endet?
-- [ ] Was ist eine Container Registry, und warum wird sie in Kubernetes wichtig?
+- [ ] What is the difference between a container image and a running container?
+- [ ] What does a Dockerfile describe?
+- [ ] How do you see the logs of a running container?
+- [ ] What happens when you `docker stop` a container — are its files gone?
 
 ## Definition of Done
 
-Du bist mit diesem Modul fertig, wenn du:
+You are done with this module when you:
 
-- [ ] den Unterschied zwischen Container-Image und laufendem Container erklären kannst
-- [ ] einen Container mit eigenem Dockerfile gebaut und gestartet hast
-- [ ] `docker logs`, `docker exec` und `docker stop` ausgeführt hast
-- [ ] erklären kannst warum Container schneller starten als VMs
-- [ ] alle Checkpoint-Fragen beantworten kannst
+- [ ] Can explain the difference between an image and a container
+- [ ] Have built a custom Docker image from a Dockerfile
+- [ ] Have run a container and inspected it with `docker exec` and `docker logs`
+- [ ] Can stop and remove a container
+- [ ] Can answer all checkpoint questions
 
-## Weiterführende Links
+## Further Reading
 
-- [Was sind Container?](https://kubernetes.io/docs/concepts/containers/)
-- [Docker Übersicht](https://docs.docker.com/get-started/overview/)
-- [OCI Image Spec](https://opencontainers.org/)
+- [Docker Overview](https://docs.docker.com/get-started/overview/)
+- [Dockerfile Reference](https://docs.docker.com/engine/reference/builder/)
+- [Best practices for writing Dockerfiles](https://docs.docker.com/develop/develop-images/dockerfile_best-practices/)
